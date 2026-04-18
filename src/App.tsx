@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FolderPicker } from "./components/FolderPicker";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { TodayNotepad } from "./components/TodayNotepad";
 import { initTheme, subscribeSystemTheme, toggleTheme } from "./lib/theme";
 import { FsaAdapter } from "./storage/FsaAdapter";
@@ -58,5 +59,10 @@ export default function App() {
 		);
 	}
 
-	return <TodayNotepad adapter={adapter} />;
+	return (
+		<>
+			<TodayNotepad adapter={adapter} />
+			<ThemeToggle />
+		</>
+	);
 }

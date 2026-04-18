@@ -92,6 +92,12 @@ export function TodayNotepad({ adapter }: TodayNotepadProps) {
 		setEntry((prev) => (prev ? { ...prev, location } : prev));
 	}, []);
 
+	const handleBlur = useCallback(() => {
+		if (entryRef.current) {
+			adapter.put(entryRef.current).catch(console.error);
+		}
+	}, [adapter]);
+
 	// -- Render ----------------------------------------------------------------
 
 	if (!entry) {
@@ -107,7 +113,11 @@ export function TodayNotepad({ adapter }: TodayNotepadProps) {
 				recentLocations={recentLocations}
 				onLocationChange={handleLocationChange}
 			/>
-			<Editor content={entry.content} onChange={handleContentChange} />
+			<Editor
+				content={entry.content}
+				onChange={handleContentChange}
+				onBlur={handleBlur}
+			/>
 		</div>
 	);
 }

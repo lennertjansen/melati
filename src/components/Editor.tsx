@@ -4,6 +4,7 @@ import { Preview } from "./Preview";
 interface EditorProps {
 	content: string;
 	onChange: (value: string) => void;
+	onBlur?: () => void;
 }
 
 /**
@@ -13,7 +14,7 @@ interface EditorProps {
  * feels like writing on a blank page. Same font, size, and max-width as the
  * Preview for visual continuity when toggling.
  */
-export function Editor({ content, onChange }: EditorProps) {
+export function Editor({ content, onChange, onBlur }: EditorProps) {
 	const [mode, setMode] = useState<"edit" | "preview">("edit");
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -45,6 +46,7 @@ export function Editor({ content, onChange }: EditorProps) {
 			ref={textareaRef}
 			value={content}
 			onChange={(e) => onChange(e.target.value)}
+			onBlur={onBlur}
 			placeholder="Start writing..."
 			className="w-full max-w-[65ch] mx-auto block min-h-[70vh] bg-transparent outline-none resize-none text-lg leading-relaxed font-serif text-[var(--color-fg)] placeholder:text-[var(--color-fg-subtle)]"
 		/>
