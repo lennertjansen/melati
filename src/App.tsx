@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { FolderPicker } from "./components/FolderPicker";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { TodayNotepad } from "./components/TodayNotepad";
 import { initTheme, subscribeSystemTheme, toggleTheme } from "./lib/theme";
-import { FsaAdapter } from "./storage/FsaAdapter";
-import { NeedsFolderError } from "./storage/StorageAdapter";
+import { IdbAdapter } from "./storage/IdbAdapter";
 
-type AppState = "loading" | "needsFolder" | "ready";
+type AppState = "loading" | "ready";
 
 export default function App() {
-	const adapter = useMemo(() => new FsaAdapter(), []);
+	const adapter = useMemo(() => new IdbAdapter(), []);
 	const [state, setState] = useState<AppState>("loading");
 
 	// -- Theme bootstrap -------------------------------------------------------
@@ -38,12 +36,7 @@ export default function App() {
 			.init()
 			.then(() => setState("ready"))
 			.catch((err) => {
-				if (err instanceof NeedsFolderError) {
-					setState("needsFolder");
-				} else {
-					console.error("Storage init error:", err);
-					setState("needsFolder");
-				}
+				console.error("Storage init error:", err);
 			});
 	}, [adapter]);
 
@@ -51,12 +44,6 @@ export default function App() {
 
 	if (state === "loading") {
 		return null;
-	}
-
-	if (state === "needsFolder") {
-		return (
-			<FolderPicker adapter={adapter} onGranted={() => setState("ready")} />
-		);
 	}
 
 	return (

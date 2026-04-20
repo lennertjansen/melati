@@ -51,8 +51,11 @@ export interface StorageAdapter {
 	 * Open the native directory picker and grant Noot access. Must be
 	 * called from inside a user gesture (click handler). On success the
 	 * adapter becomes ready.
+	 *
+	 * Optional — only required by adapters that need a user-gesture
+	 * (e.g. FsaAdapter). IndexedDB-based adapters can omit this.
 	 */
-	pickFolder(): Promise<void>;
+	pickFolder?(): Promise<void>;
 
 	/** Whether the adapter is ready to serve reads/writes. */
 	isReady(): boolean;

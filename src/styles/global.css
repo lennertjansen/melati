@@ -32,3 +32,16 @@ body {
 	min-height: 100vh;
 	-webkit-font-smoothing: antialiased;
 }
+
+/* TipTap / ProseMirror */
+.ProseMirror {
+	outline: none;
+	min-height: 70vh;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+	content: "Start writing...";
+	color: var(--color-fg-subtle);
+	pointer-events: none;
+	float: left;
+	height: 0;
+}

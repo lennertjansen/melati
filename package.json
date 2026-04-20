@@ -14,12 +14,14 @@
 		"@fontsource/lora": "^5.2.8",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.2",
-		"dompurify": "^3.3.3",
+		"@tiptap/pm": "^3.22.4",
+		"@tiptap/react": "^3.22.4",
+		"@tiptap/starter-kit": "^3.22.4",
 		"idb-keyval": "^6.2.2",
-		"marked": "^18.0.0",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
-		"tailwindcss": "^4.2.2"
+		"tailwindcss": "^4.2.2",
+		"tiptap-markdown": "^0.9.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.11",

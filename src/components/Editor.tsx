@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { Preview } from "./Preview";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { useEffect } from "react";
+import { Markdown } from "tiptap-markdown";
 
 interface EditorProps {
 	content: string;
@@ -7,48 +9,51 @@ interface EditorProps {
 	onBlur?: () => void;
 }
 
+interface MarkdownStorage {
+	markdown: { getMarkdown(): string };
+}
+
 /**
- * Fullscreen editor with Cmd+E toggle between textarea and rendered preview.
- *
- * The textarea is purposefully unstyled — no borders, no background — so it
- * feels like writing on a blank page. Same font, size, and max-width as the
- * Preview for visual continuity when toggling.
+ * TipTap WYSIWYG editor — renders markdown inline (headings, bold, italic,
+ * lists, code, blockquotes). No toolbar, just a clean writing surface.
  */
 export function Editor({ content, onChange, onBlur }: EditorProps) {
-	const [mode, setMode] = useState<"edit" | "preview">("edit");
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const editor = useEditor({
+		extensions: [
+			StarterKit,
+			Markdown.configure({
+				html: false,
+				transformPastedText: true,
+				transformCopiedText: true,
+			}),
+		],
+		content,
+		editorProps: {
+			attributes: {
+				class:
+					"font-serif text-lg leading-relaxed max-w-[65ch] mx-auto text-[var(--color-fg)]",
+			},
+		},
+		onUpdate: ({ editor }) => {
+			onChange(
+				(editor.storage as unknown as MarkdownStorage).markdown.getMarkdown(),
+			);
+		},
+		onBlur: () => {
+			onBlur?.();
+		},
+	});
 
-	// Auto-focus when entering edit mode.
+	// Sync content from parent when it changes externally (e.g. initial load).
 	useEffect(() => {
-		if (mode === "edit") {
-			textareaRef.current?.focus();
+		if (!editor) return;
+		const current = (
+			editor.storage as unknown as MarkdownStorage
+		).markdown.getMarkdown();
+		if (current !== content) {
+			editor.commands.setContent(content);
 		}
-	}, [mode]);
+	}, [editor, content]);
 
-	// Cmd+E toggles edit/preview.
-	useEffect(() => {
-		function handleKey(e: KeyboardEvent) {
-			if ((e.metaKey || e.ctrlKey) && e.key === "e") {
-				e.preventDefault();
-				setMode((m) => (m === "edit" ? "preview" : "edit"));
-			}
-		}
-		window.addEventListener("keydown", handleKey);
-		return () => window.removeEventListener("keydown", handleKey);
-	}, []);
-
-	if (mode === "preview") {
-		return <Preview content={content} />;
-	}
-
-	return (
-		<textarea
-			ref={textareaRef}
-			value={content}
-			onChange={(e) => onChange(e.target.value)}
-			onBlur={onBlur}
-			placeholder="Start writing..."
-			className="w-full max-w-[65ch] mx-auto block min-h-[70vh] bg-transparent outline-none resize-none text-lg leading-relaxed font-serif text-[var(--color-fg)] placeholder:text-[var(--color-fg-subtle)]"
-		/>
-	);
+	return <EditorContent editor={editor} />;
 }

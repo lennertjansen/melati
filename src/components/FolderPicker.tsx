@@ -16,7 +16,7 @@ interface FolderPickerProps {
 export function FolderPicker({ adapter, onGranted }: FolderPickerProps) {
 	async function handleClick() {
 		try {
-			await adapter.pickFolder();
+			await adapter.pickFolder?.();
 			onGranted();
 		} catch (err) {
 			// User cancelled the native picker — do nothing, let them retry.
