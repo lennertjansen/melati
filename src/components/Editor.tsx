@@ -1,6 +1,6 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Markdown } from "tiptap-markdown";
 
 interface EditorProps {
@@ -16,8 +16,15 @@ interface MarkdownStorage {
 /**
  * TipTap WYSIWYG editor — renders markdown inline (headings, bold, italic,
  * lists, code, blockquotes). No toolbar, just a clean writing surface.
+ *
+ * The editor is intentionally uncontrolled after mount: TipTap owns its
+ * internal state, and we only push content in when it changes externally
+ * (e.g. loading a different day's entry). User keystrokes flow out via
+ * onChange but never loop back in via setContent.
  */
 export function Editor({ content, onChange, onBlur }: EditorProps) {
+	const lastEmitted = useRef(content);
+
 	const editor = useEditor({
 		extensions: [
 			StarterKit,
@@ -35,22 +42,23 @@ export function Editor({ content, onChange, onBlur }: EditorProps) {
 			},
 		},
 		onUpdate: ({ editor }) => {
-			onChange(
-				(editor.storage as unknown as MarkdownStorage).markdown.getMarkdown(),
-			);
+			const md = (
+				editor.storage as unknown as MarkdownStorage
+			).markdown.getMarkdown();
+			lastEmitted.current = md;
+			onChange(md);
 		},
 		onBlur: () => {
 			onBlur?.();
 		},
 	});
 
-	// Sync content from parent when it changes externally (e.g. initial load).
+	// Only sync content from parent when it differs from what the editor
+	// last emitted — i.e. an external change, not an echo of our own update.
 	useEffect(() => {
 		if (!editor) return;
-		const current = (
-			editor.storage as unknown as MarkdownStorage
-		).markdown.getMarkdown();
-		if (current !== content) {
+		if (content !== lastEmitted.current) {
+			lastEmitted.current = content;
 			editor.commands.setContent(content);
 		}
 	}, [editor, content]);
