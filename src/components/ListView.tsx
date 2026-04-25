@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatRelativeDate, parseDateKey } from "../lib/date";
 import { type EntrySummary, loadEntrySummaries } from "../lib/entries";
+import { getIntlLocale, t } from "../lib/i18n";
 import type { StorageAdapter } from "../storage/StorageAdapter";
 
 interface ListViewProps {
@@ -22,7 +23,7 @@ function monthKey(dateKey: string): string {
 
 function formatMonthLabel(monthKey: string): string {
 	const [y, m] = monthKey.split("-").map(Number);
-	return new Date(y, m - 1, 1).toLocaleDateString(undefined, {
+	return new Date(y, m - 1, 1).toLocaleDateString(getIntlLocale(), {
 		month: "long",
 		year: "numeric",
 	});
@@ -73,7 +74,7 @@ export function ListView({ adapter, onSelectDate }: ListViewProps) {
 	if (summaries.length === 0) {
 		return (
 			<div className="max-w-3xl mx-auto px-4 py-24 text-center font-serif text-[var(--color-fg-subtle)]">
-				No entries yet
+				{t("list.empty")}
 			</div>
 		);
 	}
@@ -91,7 +92,7 @@ export function ListView({ adapter, onSelectDate }: ListViewProps) {
 								: "hover:text-[var(--color-fg)]"
 						}`}
 					>
-						Flat
+						{t("list.flat")}
 					</button>
 					<span aria-hidden="true">·</span>
 					<button
@@ -103,7 +104,7 @@ export function ListView({ adapter, onSelectDate }: ListViewProps) {
 								: "hover:text-[var(--color-fg)]"
 						}`}
 					>
-						Grouped
+						{t("list.grouped")}
 					</button>
 				</div>
 			</div>
@@ -135,13 +136,14 @@ function EntryRow({
 }) {
 	const dateLabel = formatRelativeDate(summary.dateKey);
 	const shortDate = parseDateKey(summary.dateKey).toLocaleDateString(
-		undefined,
+		getIntlLocale(),
 		{
 			month: "short",
 			day: "numeric",
 		},
 	);
-	const showShort = dateLabel === "Today" || dateLabel === "Yesterday";
+	const showShort =
+		dateLabel === t("relative.today") || dateLabel === t("relative.yesterday");
 
 	return (
 		<button

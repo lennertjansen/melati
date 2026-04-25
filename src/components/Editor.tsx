@@ -7,6 +7,7 @@ interface EditorProps {
 	content: string;
 	onChange: (value: string) => void;
 	onBlur?: () => void;
+	readOnly?: boolean;
 }
 
 interface MarkdownStorage {
@@ -22,10 +23,11 @@ interface MarkdownStorage {
  * (e.g. loading a different day's entry). User keystrokes flow out via
  * onChange but never loop back in via setContent.
  */
-export function Editor({ content, onChange, onBlur }: EditorProps) {
+export function Editor({ content, onChange, onBlur, readOnly }: EditorProps) {
 	const lastEmitted = useRef(content);
 
 	const editor = useEditor({
+		editable: !readOnly,
 		extensions: [
 			StarterKit,
 			Markdown.configure({
@@ -42,6 +44,7 @@ export function Editor({ content, onChange, onBlur }: EditorProps) {
 			},
 		},
 		onUpdate: ({ editor }) => {
+			if (readOnly) return;
 			const md = (
 				editor.storage as unknown as MarkdownStorage
 			).markdown.getMarkdown();
@@ -49,6 +52,7 @@ export function Editor({ content, onChange, onBlur }: EditorProps) {
 			onChange(md);
 		},
 		onBlur: () => {
+			if (readOnly) return;
 			onBlur?.();
 		},
 	});

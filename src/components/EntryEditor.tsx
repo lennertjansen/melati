@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { nowIsoWithOffset } from "../lib/date";
+import { nowIsoWithOffset, todayKey } from "../lib/date";
+import { t } from "../lib/i18n";
 import type { JournalEntry, StorageAdapter } from "../storage/StorageAdapter";
 import { Editor } from "./Editor";
 import { Header } from "./Header";
@@ -11,13 +12,14 @@ interface EntryEditorProps {
 }
 
 /**
- * Render and edit a single entry by date key. Loads (or creates) the entry
- * on mount, auto-saves on change (500ms debounce), and flushes pending
- * writes before navigating away.
+ * Render and edit a single entry by date key. Today's entry is editable
+ * (auto-save 500ms debounce, blur save, beforeunload flush). Past entries
+ * are read-only — the paper-permanent feel.
  */
 export function EntryEditor({ adapter, dateKey, onBack }: EntryEditorProps) {
 	const [entry, setEntry] = useState<JournalEntry | null>(null);
 	const [recentLocations, setRecentLocations] = useState<string[]>([]);
+	const readOnly = dateKey !== todayKey();
 
 	useEffect(() => {
 		let cancelled = false;
@@ -43,6 +45,7 @@ export function EntryEditor({ adapter, dateKey, onBack }: EntryEditorProps) {
 	}, [adapter, dateKey]);
 
 	useEffect(() => {
+		if (readOnly) return;
 		async function scan() {
 			const keys = await adapter.list();
 			const locations = new Set<string>();
@@ -53,29 +56,30 @@ export function EntryEditor({ adapter, dateKey, onBack }: EntryEditorProps) {
 			setRecentLocations([...locations].sort());
 		}
 		scan().catch(console.error);
-	}, [adapter]);
+	}, [adapter, readOnly]);
 
 	const entryRef = useRef(entry);
 	entryRef.current = entry;
 
 	useEffect(() => {
-		if (!entry) return;
+		if (readOnly || !entry) return;
 		const timer = setTimeout(() => {
 			adapter.put(entry).catch(console.error);
 		}, 500);
 		return () => clearTimeout(timer);
-	}, [entry, adapter]);
+	}, [entry, adapter, readOnly]);
 
-	// Flush pending writes before unmount or when the entry changes.
 	useEffect(() => {
+		if (readOnly) return;
 		return () => {
 			if (entryRef.current) {
 				adapter.put(entryRef.current).catch(console.error);
 			}
 		};
-	}, [adapter]);
+	}, [adapter, readOnly]);
 
 	useEffect(() => {
+		if (readOnly) return;
 		function flush() {
 			if (entryRef.current) {
 				adapter.put(entryRef.current).catch(console.error);
@@ -83,7 +87,7 @@ export function EntryEditor({ adapter, dateKey, onBack }: EntryEditorProps) {
 		}
 		window.addEventListener("beforeunload", flush);
 		return () => window.removeEventListener("beforeunload", flush);
-	}, [adapter]);
+	}, [adapter, readOnly]);
 
 	const handleContentChange = useCallback((value: string) => {
 		setEntry((prev) => (prev ? { ...prev, content: value } : prev));
@@ -104,6 +108,7 @@ export function EntryEditor({ adapter, dateKey, onBack }: EntryEditorProps) {
 	}
 
 	const isEmpty = entry.content.trim() === "";
+	const showPlaceholder = !readOnly && isEmpty;
 
 	return (
 		<div className="max-w-3xl mx-auto px-4">
@@ -114,14 +119,15 @@ export function EntryEditor({ adapter, dateKey, onBack }: EntryEditorProps) {
 				recentLocations={recentLocations}
 				onLocationChange={handleLocationChange}
 				onBack={onBack}
+				readOnly={readOnly}
 			/>
 			<div className="relative">
-				{isEmpty && (
+				{showPlaceholder && (
 					<div
 						className="absolute inset-0 pointer-events-none font-serif text-lg leading-relaxed max-w-[65ch] mx-auto text-[var(--color-fg-subtle)] pt-[0.4rem]"
 						aria-hidden="true"
 					>
-						Start writing…
+						{t("placeholder")}
 					</div>
 				)}
 				<Editor
@@ -129,6 +135,7 @@ export function EntryEditor({ adapter, dateKey, onBack }: EntryEditorProps) {
 					content={entry.content}
 					onChange={handleContentChange}
 					onBlur={handleBlur}
+					readOnly={readOnly}
 				/>
 			</div>
 		</div>

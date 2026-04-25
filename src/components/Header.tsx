@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { formatHeaderParts } from "../lib/date";
+import { t } from "../lib/i18n";
 import { LocationField } from "./LocationField";
 
 interface HeaderProps {
@@ -9,6 +10,7 @@ interface HeaderProps {
 	recentLocations: string[];
 	onLocationChange: (location: string) => void;
 	onBack?: () => void;
+	readOnly?: boolean;
 }
 
 /**
@@ -25,11 +27,14 @@ export function Header({
 	recentLocations,
 	onLocationChange,
 	onBack,
+	readOnly,
 }: HeaderProps) {
 	const { dayName, dateText, timeText } = useMemo(
 		() => formatHeaderParts(dateKey, createdAt),
 		[dateKey, createdAt],
 	);
+
+	const showLocationDot = !readOnly || !!location;
 
 	return (
 		<div className="relative">
@@ -39,7 +44,7 @@ export function Header({
 					onClick={onBack}
 					className="absolute left-0 top-6 bg-transparent border-none cursor-pointer text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] font-serif text-sm transition-colors"
 				>
-					‹ Back
+					{t("back")}
 				</button>
 			)}
 			<header className="flex flex-wrap items-center justify-center gap-2 py-6 text-[var(--color-fg-subtle)] font-serif text-sm select-none">
@@ -48,11 +53,12 @@ export function Header({
 				<span>{dateText}</span>
 				<span aria-hidden="true">·</span>
 				<span>{timeText}</span>
-				<span aria-hidden="true">·</span>
+				{showLocationDot && <span aria-hidden="true">·</span>}
 				<LocationField
 					value={location}
 					recentLocations={recentLocations}
 					onChange={onLocationChange}
+					readOnly={readOnly}
 				/>
 			</header>
 		</div>

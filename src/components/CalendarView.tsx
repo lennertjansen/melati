@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { formatMonthYear, getMonthDays, todayKey } from "../lib/date";
-import { loadEntryDates } from "../lib/entries";
+import {
+	formatMonthYear,
+	getMonthDays,
+	getWeekdayLabels,
+	todayKey,
+} from "../lib/date";
+import { type EntrySummary, loadEntrySummaries } from "../lib/entries";
+import { getFirstDayOfWeek, t } from "../lib/i18n";
 import type { StorageAdapter } from "../storage/StorageAdapter";
 
 interface CalendarViewProps {
@@ -8,33 +14,32 @@ interface CalendarViewProps {
 	onSelectDate: (dateKey: string) => void;
 }
 
-const DAY_LABELS = [
-	{ key: "sun", label: "S" },
-	{ key: "mon", label: "M" },
-	{ key: "tue", label: "T" },
-	{ key: "wed", label: "W" },
-	{ key: "thu", label: "T" },
-	{ key: "fri", label: "F" },
-	{ key: "sat", label: "S" },
-];
+const CELL_BORDER =
+	"border-[color-mix(in_oklab,var(--color-fg)_10%,transparent)]";
 
 /**
- * Month-grid calendar. Shows a dot under any day with an entry. Today is
- * rendered as an inverted circle. Only today + days with existing entries
- * are clickable.
+ * Notion-style month grid. Each cell is filled — day number top-right and a
+ * single-line preview below for any day with an entry. Today's day number
+ * gets the inverted-circle treatment. Only today + days with existing
+ * entries are clickable.
  */
 export function CalendarView({ adapter, onSelectDate }: CalendarViewProps) {
 	const today = todayKey();
 	const now = new Date();
 	const [year, setYear] = useState(now.getFullYear());
 	const [month, setMonth] = useState(now.getMonth());
-	const [entryDates, setEntryDates] = useState<Set<string> | null>(null);
+	const [summaries, setSummaries] = useState<Map<string, EntrySummary> | null>(
+		null,
+	);
 
 	useEffect(() => {
 		let cancelled = false;
-		loadEntryDates(adapter)
-			.then((dates) => {
-				if (!cancelled) setEntryDates(dates);
+		loadEntrySummaries(adapter)
+			.then((list) => {
+				if (cancelled) return;
+				const byKey = new Map<string, EntrySummary>();
+				for (const s of list) byKey.set(s.dateKey, s);
+				setSummaries(byKey);
 			})
 			.catch(console.error);
 		return () => {
@@ -42,7 +47,12 @@ export function CalendarView({ adapter, onSelectDate }: CalendarViewProps) {
 		};
 	}, [adapter]);
 
-	const days = useMemo(() => getMonthDays(year, month), [year, month]);
+	const firstDayOfWeek = getFirstDayOfWeek();
+	const weekdayLabels = useMemo(() => getWeekdayLabels(), []);
+	const days = useMemo(
+		() => getMonthDays(year, month, firstDayOfWeek),
+		[year, month, firstDayOfWeek],
+	);
 
 	function prevMonth() {
 		if (month === 0) {
@@ -62,15 +72,15 @@ export function CalendarView({ adapter, onSelectDate }: CalendarViewProps) {
 		}
 	}
 
-	if (!entryDates) return null;
+	if (!summaries) return null;
 
 	return (
-		<div className="max-w-3xl mx-auto px-4 py-6 font-serif">
+		<div className="max-w-5xl mx-auto px-4 py-6 font-serif">
 			<div className="flex items-center justify-center gap-6 mb-6 text-[var(--color-fg)]">
 				<button
 					type="button"
 					onClick={prevMonth}
-					aria-label="Previous month"
+					aria-label={t("cal.prev")}
 					className="bg-transparent border-none cursor-pointer text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] text-lg"
 				>
 					‹
@@ -79,26 +89,27 @@ export function CalendarView({ adapter, onSelectDate }: CalendarViewProps) {
 				<button
 					type="button"
 					onClick={nextMonth}
-					aria-label="Next month"
+					aria-label={t("cal.next")}
 					className="bg-transparent border-none cursor-pointer text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] text-lg"
 				>
 					›
 				</button>
 			</div>
 
-			<div className="grid grid-cols-7 gap-1 mb-2 text-xs text-[var(--color-fg-subtle)]">
-				{DAY_LABELS.map((d) => (
-					<div key={d.key} className="text-center py-2">
+			<div className="grid grid-cols-7 mb-1 text-xs text-[var(--color-fg-subtle)] uppercase tracking-wide">
+				{weekdayLabels.map((d) => (
+					<div key={d.dayOfWeek} className="text-center py-2">
 						{d.label}
 					</div>
 				))}
 			</div>
 
-			<div className="grid grid-cols-7 gap-1">
+			<div className={`grid grid-cols-7 border-l border-t ${CELL_BORDER}`}>
 				{days.map((day) => {
 					const isToday = day.dateKey === today;
-					const hasEntry = entryDates.has(day.dateKey);
-					const clickable = isToday || hasEntry;
+					const summary = summaries.get(day.dateKey);
+					const hasEntry = !!summary;
+					const clickable = day.isCurrentMonth && (isToday || hasEntry);
 
 					return (
 						<button
@@ -106,21 +117,35 @@ export function CalendarView({ adapter, onSelectDate }: CalendarViewProps) {
 							type="button"
 							disabled={!clickable}
 							onClick={() => clickable && onSelectDate(day.dateKey)}
-							className={`aspect-square flex flex-col items-center justify-center rounded-full bg-transparent border-none text-sm transition-colors ${
-								clickable ? "cursor-pointer" : "cursor-default"
-							} ${
-								isToday
-									? "bg-[var(--color-fg)] text-[var(--color-bg)]"
-									: day.isCurrentMonth
-										? clickable
-											? "text-[var(--color-fg)] hover:bg-[color-mix(in_oklab,var(--color-fg)_8%,transparent)]"
-											: "text-[var(--color-fg-subtle)]"
-										: "text-[color-mix(in_oklab,var(--color-fg-subtle)_50%,transparent)]"
+							className={`min-h-24 p-2 border-r border-b ${CELL_BORDER} flex flex-col items-stretch text-left bg-transparent transition-colors ${
+								clickable
+									? "cursor-pointer hover:bg-[color-mix(in_oklab,var(--color-fg)_4%,transparent)]"
+									: "cursor-default"
 							}`}
 						>
-							<span>{day.date.getDate()}</span>
-							{hasEntry && !isToday && (
-								<span className="block w-1 h-1 rounded-full bg-[var(--color-fg-subtle)] mt-0.5" />
+							<div className="flex justify-end">
+								{isToday ? (
+									<span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--color-fg)] text-[var(--color-bg)] text-xs">
+										{day.date.getDate()}
+									</span>
+								) : (
+									<span
+										className={`text-xs ${
+											day.isCurrentMonth
+												? hasEntry
+													? "text-[var(--color-fg)]"
+													: "text-[var(--color-fg-subtle)]"
+												: "text-[color-mix(in_oklab,var(--color-fg-subtle)_50%,transparent)]"
+										}`}
+									>
+										{day.date.getDate()}
+									</span>
+								)}
+							</div>
+							{hasEntry && day.isCurrentMonth && summary.preview && (
+								<div className="mt-1 text-xs text-[var(--color-fg-subtle)] truncate">
+									{summary.preview}
+								</div>
 							)}
 						</button>
 					);

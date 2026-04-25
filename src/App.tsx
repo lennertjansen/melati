@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BottomNav, type BottomNavTab } from "./components/BottomNav";
 import { CalendarView } from "./components/CalendarView";
 import { EntryEditor } from "./components/EntryEditor";
@@ -16,10 +16,14 @@ type View =
 	| { name: "calendar" }
 	| { name: "entry"; dateKey: string; from: "list" | "calendar" };
 
+const CHROME_HIDE_DELAY_MS = 2000;
+
 export default function App() {
 	const adapter = useMemo(() => new IdbAdapter(), []);
 	const [state, setState] = useState<AppState>("loading");
 	const [view, setView] = useState<View>({ name: "today" });
+	const [chromeVisible, setChromeVisible] = useState(true);
+	const hideTimer = useRef<number | null>(null);
 
 	useEffect(() => {
 		initTheme();
@@ -45,6 +49,47 @@ export default function App() {
 				console.error("Storage init error:", err);
 			});
 	}, [adapter]);
+
+	// Chrome auto-hide on the writing view: bottom nav + theme toggle fade
+	// out after a short idle period. Mousemove / touch brings them back.
+	// Other views always show chrome (they *are* navigation).
+	useEffect(() => {
+		if (view.name !== "today") {
+			setChromeVisible(true);
+			if (hideTimer.current !== null) {
+				window.clearTimeout(hideTimer.current);
+				hideTimer.current = null;
+			}
+			return;
+		}
+
+		function scheduleHide() {
+			if (hideTimer.current !== null) {
+				window.clearTimeout(hideTimer.current);
+			}
+			hideTimer.current = window.setTimeout(
+				() => setChromeVisible(false),
+				CHROME_HIDE_DELAY_MS,
+			);
+		}
+
+		function onActivity() {
+			setChromeVisible(true);
+			scheduleHide();
+		}
+
+		scheduleHide();
+		window.addEventListener("mousemove", onActivity);
+		window.addEventListener("touchstart", onActivity);
+		return () => {
+			window.removeEventListener("mousemove", onActivity);
+			window.removeEventListener("touchstart", onActivity);
+			if (hideTimer.current !== null) {
+				window.clearTimeout(hideTimer.current);
+				hideTimer.current = null;
+			}
+		};
+	}, [view.name]);
 
 	if (state === "loading") {
 		return null;
@@ -96,8 +141,12 @@ export default function App() {
 					/>
 				)}
 			</div>
-			<BottomNav active={activeTab} onNavigate={navigate} />
-			<ThemeToggle />
+			<BottomNav
+				active={activeTab}
+				onNavigate={navigate}
+				visible={chromeVisible}
+			/>
+			<ThemeToggle visible={chromeVisible} />
 		</>
 	);
 }
