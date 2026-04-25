@@ -1,27 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { nowIsoWithOffset, todayKey } from "../lib/date";
+import { nowIsoWithOffset } from "../lib/date";
 import type { JournalEntry, StorageAdapter } from "../storage/StorageAdapter";
 import { Editor } from "./Editor";
 import { Header } from "./Header";
 
-interface TodayNotepadProps {
+interface EntryEditorProps {
 	adapter: StorageAdapter;
+	dateKey: string;
+	onBack?: () => void;
 }
 
 /**
- * The main screen: today's entry. Loads (or creates) the entry on mount,
- * renders the header + editor, and auto-saves on every content change
- * (debounced 500ms).
+ * Render and edit a single entry by date key. Loads (or creates) the entry
+ * on mount, auto-saves on change (500ms debounce), and flushes pending
+ * writes before navigating away.
  */
-export function TodayNotepad({ adapter }: TodayNotepadProps) {
+export function EntryEditor({ adapter, dateKey, onBack }: EntryEditorProps) {
 	const [entry, setEntry] = useState<JournalEntry | null>(null);
 	const [recentLocations, setRecentLocations] = useState<string[]>([]);
-	const dateKey = todayKey();
-
-	// -- Load or create today's entry ----------------------------------------
 
 	useEffect(() => {
 		let cancelled = false;
+		setEntry(null);
 		async function load() {
 			const existing = await adapter.get(dateKey);
 			if (cancelled) return;
@@ -42,8 +42,6 @@ export function TodayNotepad({ adapter }: TodayNotepadProps) {
 		};
 	}, [adapter, dateKey]);
 
-	// -- Collect recent locations from past entries --------------------------
-
 	useEffect(() => {
 		async function scan() {
 			const keys = await adapter.list();
@@ -57,8 +55,6 @@ export function TodayNotepad({ adapter }: TodayNotepadProps) {
 		scan().catch(console.error);
 	}, [adapter]);
 
-	// -- Debounced auto-save (500ms) -----------------------------------------
-
 	const entryRef = useRef(entry);
 	entryRef.current = entry;
 
@@ -70,7 +66,14 @@ export function TodayNotepad({ adapter }: TodayNotepadProps) {
 		return () => clearTimeout(timer);
 	}, [entry, adapter]);
 
-	// -- Save on beforeunload -------------------------------------------------
+	// Flush pending writes before unmount or when the entry changes.
+	useEffect(() => {
+		return () => {
+			if (entryRef.current) {
+				adapter.put(entryRef.current).catch(console.error);
+			}
+		};
+	}, [adapter]);
 
 	useEffect(() => {
 		function flush() {
@@ -81,8 +84,6 @@ export function TodayNotepad({ adapter }: TodayNotepadProps) {
 		window.addEventListener("beforeunload", flush);
 		return () => window.removeEventListener("beforeunload", flush);
 	}, [adapter]);
-
-	// -- Handlers -------------------------------------------------------------
 
 	const handleContentChange = useCallback((value: string) => {
 		setEntry((prev) => (prev ? { ...prev, content: value } : prev));
@@ -98,11 +99,11 @@ export function TodayNotepad({ adapter }: TodayNotepadProps) {
 		}
 	}, [adapter]);
 
-	// -- Render ----------------------------------------------------------------
-
 	if (!entry) {
-		return null; // loading
+		return null;
 	}
+
+	const isEmpty = entry.content.trim() === "";
 
 	return (
 		<div className="max-w-3xl mx-auto px-4">
@@ -112,12 +113,24 @@ export function TodayNotepad({ adapter }: TodayNotepadProps) {
 				location={entry.location}
 				recentLocations={recentLocations}
 				onLocationChange={handleLocationChange}
+				onBack={onBack}
 			/>
-			<Editor
-				content={entry.content}
-				onChange={handleContentChange}
-				onBlur={handleBlur}
-			/>
+			<div className="relative">
+				{isEmpty && (
+					<div
+						className="absolute inset-0 pointer-events-none font-serif text-lg leading-relaxed max-w-[65ch] mx-auto text-[var(--color-fg-subtle)] pt-[0.4rem]"
+						aria-hidden="true"
+					>
+						Start writing…
+					</div>
+				)}
+				<Editor
+					key={dateKey}
+					content={entry.content}
+					onChange={handleContentChange}
+					onBlur={handleBlur}
+				/>
+			</div>
 		</div>
 	);
 }

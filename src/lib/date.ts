@@ -74,7 +74,67 @@ export function formatHeaderParts(
 }
 
 /** Parse a YYYY-MM-DD string into a Date at local midnight. */
-function parseDateKey(key: string): Date {
+export function parseDateKey(key: string): Date {
 	const [y, m, d] = key.split("-").map(Number);
 	return new Date(y, m - 1, d);
+}
+
+/**
+ * Format a date key relative to today: "Today", "Yesterday", or a long-form
+ * date like "April 11, 2026".
+ */
+export function formatRelativeDate(dateKey: string): string {
+	if (dateKey === todayKey()) return "Today";
+	const today = new Date();
+	const yesterday = new Date(
+		today.getFullYear(),
+		today.getMonth(),
+		today.getDate() - 1,
+	);
+	if (dateKey === toDateKey(yesterday)) return "Yesterday";
+	return parseDateKey(dateKey).toLocaleDateString(undefined, {
+		weekday: "long",
+		month: "long",
+		day: "numeric",
+		year: "numeric",
+	});
+}
+
+export interface MonthDay {
+	date: Date;
+	dateKey: string;
+	isCurrentMonth: boolean;
+}
+
+/**
+ * 6-week (42-cell) calendar grid for a given month, starting on Sunday.
+ * Includes trailing days from the previous month and leading days of the
+ * next month so the grid is always 7×6.
+ */
+export function getMonthDays(year: number, month: number): MonthDay[] {
+	const firstOfMonth = new Date(year, month, 1);
+	const startOffset = firstOfMonth.getDay();
+	const gridStart = new Date(year, month, 1 - startOffset);
+	const days: MonthDay[] = [];
+	for (let i = 0; i < 42; i++) {
+		const d = new Date(
+			gridStart.getFullYear(),
+			gridStart.getMonth(),
+			gridStart.getDate() + i,
+		);
+		days.push({
+			date: d,
+			dateKey: toDateKey(d),
+			isCurrentMonth: d.getMonth() === month,
+		});
+	}
+	return days;
+}
+
+/** "April 2026" — month and year in the user's locale. */
+export function formatMonthYear(year: number, month: number): string {
+	return new Date(year, month, 1).toLocaleDateString(undefined, {
+		month: "long",
+		year: "numeric",
+	});
 }

@@ -38,3 +38,6 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Playwright artifacts
+.playwright-mcp/

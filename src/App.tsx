@@ -1,23 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
+import { BottomNav, type BottomNavTab } from "./components/BottomNav";
+import { CalendarView } from "./components/CalendarView";
+import { EntryEditor } from "./components/EntryEditor";
+import { ListView } from "./components/ListView";
 import { ThemeToggle } from "./components/ThemeToggle";
-import { TodayNotepad } from "./components/TodayNotepad";
+import { todayKey } from "./lib/date";
 import { initTheme, subscribeSystemTheme, toggleTheme } from "./lib/theme";
 import { IdbAdapter } from "./storage/IdbAdapter";
 
 type AppState = "loading" | "ready";
 
+type View =
+	| { name: "today" }
+	| { name: "list" }
+	| { name: "calendar" }
+	| { name: "entry"; dateKey: string; from: "list" | "calendar" };
+
 export default function App() {
 	const adapter = useMemo(() => new IdbAdapter(), []);
 	const [state, setState] = useState<AppState>("loading");
-
-	// -- Theme bootstrap -------------------------------------------------------
+	const [view, setView] = useState<View>({ name: "today" });
 
 	useEffect(() => {
 		initTheme();
 		return subscribeSystemTheme(() => {});
 	}, []);
 
-	// Cmd+Shift+L to toggle theme.
 	useEffect(() => {
 		function handleKey(e: KeyboardEvent) {
 			if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "L") {
@@ -29,8 +37,6 @@ export default function App() {
 		return () => window.removeEventListener("keydown", handleKey);
 	}, []);
 
-	// -- Storage bootstrap -----------------------------------------------------
-
 	useEffect(() => {
 		adapter
 			.init()
@@ -40,15 +46,57 @@ export default function App() {
 			});
 	}, [adapter]);
 
-	// -- Render ----------------------------------------------------------------
-
 	if (state === "loading") {
 		return null;
 	}
 
+	function navigate(tab: BottomNavTab) {
+		if (tab === "today") setView({ name: "today" });
+		else if (tab === "list") setView({ name: "list" });
+		else setView({ name: "calendar" });
+	}
+
+	function openEntry(dateKey: string, from: "list" | "calendar") {
+		if (dateKey === todayKey()) {
+			setView({ name: "today" });
+		} else {
+			setView({ name: "entry", dateKey, from });
+		}
+	}
+
+	const activeTab: BottomNavTab = view.name === "entry" ? view.from : view.name;
+
 	return (
 		<>
-			<TodayNotepad adapter={adapter} />
+			<div className="pb-20">
+				{view.name === "today" && (
+					<EntryEditor adapter={adapter} dateKey={todayKey()} />
+				)}
+				{view.name === "entry" && (
+					<EntryEditor
+						adapter={adapter}
+						dateKey={view.dateKey}
+						onBack={() =>
+							setView(
+								view.from === "list" ? { name: "list" } : { name: "calendar" },
+							)
+						}
+					/>
+				)}
+				{view.name === "list" && (
+					<ListView
+						adapter={adapter}
+						onSelectDate={(dk) => openEntry(dk, "list")}
+					/>
+				)}
+				{view.name === "calendar" && (
+					<CalendarView
+						adapter={adapter}
+						onSelectDate={(dk) => openEntry(dk, "calendar")}
+					/>
+				)}
+			</div>
+			<BottomNav active={activeTab} onNavigate={navigate} />
 			<ThemeToggle />
 		</>
 	);

@@ -39,7 +39,7 @@ export function ThemeToggle() {
 			aria-label={
 				theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
 			}
-			className="fixed bottom-4 right-4 p-2 rounded-full text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] transition-colors cursor-pointer bg-transparent border-none text-lg"
+			className="fixed top-4 right-4 p-2 rounded-full text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] transition-colors cursor-pointer bg-transparent border-none text-lg z-10"
 		>
 			{theme === "dark" ? "\u2600" : "\u263E"}
 		</button>
