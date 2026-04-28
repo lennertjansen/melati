@@ -1,0 +1,59 @@
+name: Noot
+options:
+  bundleIdPrefix: com.lennertjansen
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  Noot:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/Noot
+    resources:
+      - path: Resources
+    info:
+      path: Sources/Noot/Info.plist
+      properties:
+        CFBundleDisplayName: Noot
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.productivity
+        NSHumanReadableCopyright: ""
+        ATSApplicationFontsPath: .
+    entitlements:
+      path: Sources/Noot/Noot.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lennertjansen.noot
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+
+  NootTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/NootTests
+    dependencies:
+      - target: Noot
+    settings:
+      base:
+        BUNDLE_LOADER: $(TEST_HOST)
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Noot.app/Contents/MacOS/Noot
