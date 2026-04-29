@@ -14,3 +14,7 @@ Package.resolved
 
 # macOS
 .DS_Store
+
+# Editor embed (Vite project for the WKWebView-hosted TipTap editor)
+editor-embed/node_modules/
+editor-embed/dist/

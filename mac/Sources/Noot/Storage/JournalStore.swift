@@ -85,6 +85,19 @@ actor JournalStore {
         return out
     }
 
+    func loadRecentLocations() throws -> [String] {
+        let stmt = try db.prepare("SELECT DISTINCT location FROM entries WHERE location IS NOT NULL AND location != '' ORDER BY date DESC")
+        var seen = Set<String>()
+        var out: [String] = []
+        for row in try stmt.run() {
+            if let s = row[0] as? String, !seen.contains(s) {
+                seen.insert(s)
+                out.append(s)
+            }
+        }
+        return out
+    }
+
     func loadSummaries() throws -> [EntrySummary] {
         let stmt = try db.prepare("SELECT date, content, created_at FROM entries ORDER BY date DESC")
         var out: [EntrySummary] = []

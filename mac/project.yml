@@ -30,6 +30,10 @@ targets:
           - "Info.plist"
           - "Noot.entitlements"
       - path: Resources
+        excludes:
+          - "editor"
+      - path: Resources/editor
+        type: folder
     dependencies:
       - package: SwiftSQLCipher
         product: SQLiteDB
@@ -47,6 +51,12 @@ targets:
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
+        # Required for WKWebView's WebContent process to initialize, even when
+        # only loading file:// URLs from the bundle. WebKit's helper processes
+        # need network.client to start; without it WebContent crashes on launch.
+        # We do NOT make any network calls — the bundled editor only imports
+        # TipTap and reads/writes markdown via the JS bridge.
+        com.apple.security.network.client: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lennertjansen.noot
