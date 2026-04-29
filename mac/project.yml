@@ -15,6 +15,11 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     ENABLE_HARDENED_RUNTIME: YES
 
+packages:
+  SwiftSQLCipher:
+    url: https://github.com/skiptools/swift-sqlcipher.git
+    from: "1.9.0"
+
 targets:
   Noot:
     type: application
@@ -25,6 +30,9 @@ targets:
           - "Info.plist"
           - "Noot.entitlements"
       - path: Resources
+    dependencies:
+      - package: SwiftSQLCipher
+        product: SQLiteDB
     info:
       path: Sources/Noot/Info.plist
       properties:
@@ -55,7 +63,10 @@ targets:
       - path: Tests/NootTests
     dependencies:
       - target: Noot
+      - package: SwiftSQLCipher
+        product: SQLiteDB
     settings:
       base:
+        GENERATE_INFOPLIST_FILE: YES
         BUNDLE_LOADER: $(TEST_HOST)
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/Noot.app/Contents/MacOS/Noot
