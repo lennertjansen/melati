@@ -21,7 +21,9 @@ targets:
     platform: macOS
     sources:
       - path: Sources/Noot
-    resources:
+        excludes:
+          - "Info.plist"
+          - "Noot.entitlements"
       - path: Resources
     info:
       path: Sources/Noot/Info.plist
