@@ -16,9 +16,20 @@ struct TodayView: View {
         ZStack {
             Color("Background").ignoresSafeArea()
             VStack(spacing: 0) {
-                header
-                    .padding(.top, 24)
-                    .padding(.bottom, 8)
+                EntryHeader(
+                    dateKey: dateKey,
+                    createdAt: existingCreatedAt,
+                    location: existingLocation,
+                    recents: recentLocations,
+                    readOnly: false,
+                    onLocationChange: { newLoc in
+                        existingLocation = newLoc
+                        scheduleAutosave()
+                        Task { await save() }
+                    }
+                )
+                .padding(.top, 24)
+                .padding(.bottom, 8)
                 MarkdownEditor(
                     text: $content,
                     readOnly: false,
@@ -36,30 +47,6 @@ struct TodayView: View {
             saveTask?.cancel()
             Task { await save() }
         }
-    }
-
-    private var header: some View {
-        let parts = DateUtil.formatHeaderParts(dateKey: dateKey, createdAt: existingCreatedAt)
-        return HStack(spacing: 8) {
-            Text(parts.dayName)
-            Text("·")
-            Text(parts.dateText)
-            Text("·")
-            Text(parts.timeText)
-            Text("·")
-            LocationField(
-                value: existingLocation,
-                recents: recentLocations,
-                readOnly: false,
-                onChange: { newLoc in
-                    existingLocation = newLoc
-                    scheduleAutosave()
-                    Task { await save() }
-                }
-            )
-        }
-        .font(.lora(size: 14))
-        .foregroundStyle(Color("ForegroundSubtle"))
     }
 
     private func load() async {
@@ -80,7 +67,17 @@ struct TodayView: View {
         loaded = true
     }
 
+    private func currentEntry() -> JournalEntry {
+        JournalEntry(
+            date: dateKey,
+            content: content,
+            createdAt: existingCreatedAt ?? Date(),
+            location: existingLocation
+        )
+    }
+
     private func scheduleAutosave() {
+        env.pendingEntry = currentEntry()
         saveTask?.cancel()
         saveTask = Task {
             try? await Task.sleep(for: .milliseconds(500))
@@ -91,14 +88,12 @@ struct TodayView: View {
 
     private func save() async {
         guard loaded else { return }
-        let entry = JournalEntry(
-            date: dateKey,
-            content: content,
-            createdAt: existingCreatedAt ?? Date(),
-            location: existingLocation
-        )
+        let entry = currentEntry()
         do {
             try await env.store.put(entry)
+            if env.pendingEntry?.date == entry.date && env.pendingEntry?.content == entry.content {
+                env.pendingEntry = nil
+            }
         } catch {
             print("Save failed: \(error)")
         }

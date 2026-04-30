@@ -1,5 +1,6 @@
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "tiptap-markdown";
 
 declare global {
@@ -48,6 +49,9 @@ const editor = new Editor({
   element: root,
   extensions: [
     StarterKit.configure({}),
+    Placeholder.configure({
+      placeholder: "Start writing...",
+    }),
     Markdown.configure({
       html: false,
       transformPastedText: true,
@@ -57,12 +61,16 @@ const editor = new Editor({
   content: "",
   editorProps: {
     attributes: {
-      "data-placeholder": "Start writing...",
+      spellcheck: "false",
+      autocorrect: "off",
+      autocapitalize: "off",
+      autocomplete: "off",
     },
   },
   onUpdate: ({ editor }) => {
     const md = (editor.storage as any).markdown.getMarkdown();
     post({ type: "change", md });
+    editor.commands.scrollIntoView();
   },
   onBlur: () => {
     post({ type: "blur" });

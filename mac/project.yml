@@ -5,6 +5,10 @@ options:
     macOS: "14.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
+  developmentLanguage: en
+fileGroups:
+  - Sources/Noot/Resources/en.lproj
+  - Sources/Noot/Resources/nl.lproj
 
 settings:
   base:

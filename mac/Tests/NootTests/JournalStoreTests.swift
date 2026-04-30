@@ -82,12 +82,12 @@ final class JournalStoreTests: XCTestCase {
     }
 
     func testExtractPreviewStripsMarkdown() {
-        XCTAssertEqual(extractPreview(from: "# Heading\nbody"), "Heading")
-        XCTAssertEqual(extractPreview(from: "- item one\n- two"), "item one")
-        XCTAssertEqual(extractPreview(from: "**bold** word"), "bold word")
-        XCTAssertEqual(extractPreview(from: "`code` here"), "code here")
-        XCTAssertEqual(extractPreview(from: "\n\nlater line"), "later line")
-        XCTAssertEqual(extractPreview(from: ""), "")
+        XCTAssertEqual(EntryUtil.extractPreview(from: "# Heading\nbody"), "Heading")
+        XCTAssertEqual(EntryUtil.extractPreview(from: "- item one\n- two"), "item one")
+        XCTAssertEqual(EntryUtil.extractPreview(from: "**bold** word"), "bold word")
+        XCTAssertEqual(EntryUtil.extractPreview(from: "`code` here"), "code here")
+        XCTAssertEqual(EntryUtil.extractPreview(from: "\n\nlater line"), "later line")
+        XCTAssertEqual(EntryUtil.extractPreview(from: ""), "")
     }
 
     private func randomKey() -> Data {

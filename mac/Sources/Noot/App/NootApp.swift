@@ -2,17 +2,17 @@ import SwiftUI
 
 @main
 struct NootApp: App {
-    @State private var env: AppEnvironment
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
         FontRegistry.registerBundledFonts()
-        _env = State(initialValue: AppEnvironment())
+        _ = AppEnvironment.shared
     }
 
     var body: some Scene {
         WindowGroup {
-            TodayView()
-                .environment(env)
+            AppShell()
+                .environment(AppEnvironment.shared)
         }
         .windowStyle(.hiddenTitleBar)
     }

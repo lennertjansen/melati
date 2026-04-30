@@ -7,8 +7,11 @@ struct JournalEntry: Sendable, Equatable {
     let location: String?
 }
 
-struct EntrySummary: Sendable, Equatable {
+struct EntrySummary: Sendable, Equatable, Identifiable {
     let date: String
     let preview: String
     let createdAt: Date?
+    let location: String?
+
+    var id: String { date }
 }

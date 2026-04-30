@@ -99,36 +99,20 @@ actor JournalStore {
     }
 
     func loadSummaries() throws -> [EntrySummary] {
-        let stmt = try db.prepare("SELECT date, content, created_at FROM entries ORDER BY date DESC")
+        let stmt = try db.prepare("SELECT date, content, created_at, location FROM entries ORDER BY date DESC")
         var out: [EntrySummary] = []
         for row in try stmt.run() {
             let date = row[0] as? String ?? ""
             let content = row[1] as? String ?? ""
             let createdAt = (row[2] as? String).flatMap(Self.iso.date(from:))
+            let location = row[3] as? String
             out.append(EntrySummary(
                 date: date,
-                preview: extractPreview(from: content),
-                createdAt: createdAt
+                preview: EntryUtil.extractPreview(from: content),
+                createdAt: createdAt,
+                location: location
             ))
         }
         return out
     }
-}
-
-func extractPreview(from content: String, maxLength: Int = 80) -> String {
-    let firstLine = content
-        .split(whereSeparator: \.isNewline)
-        .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        .map(String.init) ?? ""
-    let stripped = firstLine
-        .replacingOccurrences(of: #"^#+\s+"#, with: "", options: .regularExpression)
-        .replacingOccurrences(of: #"^\s*[-*+]\s+"#, with: "", options: .regularExpression)
-        .replacingOccurrences(of: #"^\s*>\s+"#, with: "", options: .regularExpression)
-        .replacingOccurrences(of: #"\*\*([^*]+)\*\*"#, with: "$1", options: .regularExpression)
-        .replacingOccurrences(of: #"\*([^*]+)\*"#, with: "$1", options: .regularExpression)
-        .replacingOccurrences(of: #"`([^`]+)`"#, with: "$1", options: .regularExpression)
-        .trimmingCharacters(in: .whitespaces)
-    if stripped.count <= maxLength { return stripped }
-    let endIndex = stripped.index(stripped.startIndex, offsetBy: maxLength)
-    return String(stripped[..<endIndex]).trimmingCharacters(in: .whitespaces) + "…"
 }

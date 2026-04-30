@@ -9,11 +9,13 @@
         --bg: #f5eedc;
         --fg: #2e2a26;
         --fg-subtle: #2e2a26b3;
+        --caret: #2e2a26;
       }
       :root.dark {
         --bg: #1a1915;
         --fg: #e8e3d8;
         --fg-subtle: #e8e3d8b3;
+        --caret: #ffffff;
       }
       html, body {
         margin: 0;
@@ -38,6 +40,7 @@
         outline: none;
         min-height: 70vh;
         line-height: 1.55;
+        caret-color: var(--caret);
       }
       .ProseMirror p { margin: 0 0 1em; }
       .ProseMirror p.is-editor-empty:first-child::before {
