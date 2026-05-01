@@ -51,7 +51,7 @@ struct AppShell: View {
                                     .frame(width: 1)
                             }
                     )
-                    .transition(.move(edge: .leading))
+                    .transition(.move(edge: .leading).combined(with: .opacity))
                     .onHover { hovering in
                         if hovering { cancelHideTimer() } else { scheduleHide() }
                     }
@@ -82,7 +82,7 @@ struct AppShell: View {
 
     private func showSidebar() {
         cancelHideTimer()
-        withAnimation(.easeOut(duration: 0.18)) {
+        withAnimation(.easeOut(duration: 0.10)) {
             sidebarVisible = true
         }
     }
