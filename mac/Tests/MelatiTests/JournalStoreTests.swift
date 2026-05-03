@@ -1,5 +1,5 @@
 import XCTest
-@testable import Noot
+@testable import Melati
 
 final class JournalStoreTests: XCTestCase {
     private var dbPath: String!
@@ -7,7 +7,7 @@ final class JournalStoreTests: XCTestCase {
     override func setUp() {
         super.setUp()
         let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("noot-tests-\(UUID().uuidString)")
+            .appendingPathComponent("melati-tests-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         dbPath = dir.appendingPathComponent("journal.db").path
     }
@@ -103,7 +103,7 @@ final class KeyStoreTests: XCTestCase {
     override func setUp() {
         super.setUp()
         keyStore = KeyStore(
-            service: "com.lennertjansen.noot.tests",
+            service: "com.lennertjansen.melati.tests",
             account: "test-key-\(UUID().uuidString)"
         )
     }
