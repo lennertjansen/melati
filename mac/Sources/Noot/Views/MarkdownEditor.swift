@@ -19,6 +19,9 @@ struct MarkdownEditor: NSViewRepresentable {
         userContent.add(context.coordinator, name: "noot")
         config.userContentController = userContent
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
+        if #available(macOS 14.0, *) {
+            config.allowsInlinePredictions = false
+        }
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
@@ -82,11 +85,6 @@ struct MarkdownEditor: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             _log("[noot.editor] webview didFinish")
-            disableTextChecking(webView)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak webView] in
-                guard let webView else { return }
-                disableTextChecking(webView)
-            }
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
@@ -123,38 +121,6 @@ struct MarkdownEditor: NSViewRepresentable {
                 decisionHandler(.cancel)
             }
         }
-    }
-}
-
-private func disableTextChecking(_ root: NSView) {
-    let booleanKeys = [
-        "continuousSpellCheckingEnabled",
-        "grammarCheckingEnabled",
-        "automaticSpellingCorrectionEnabled",
-        "automaticTextCompletionEnabled",
-        "automaticTextReplacementEnabled",
-        "automaticDashSubstitutionEnabled",
-        "automaticQuoteSubstitutionEnabled",
-        "automaticLinkDetectionEnabled",
-        "automaticDataDetectionEnabled",
-        "smartInsertDeleteEnabled",
-    ]
-    for key in booleanKeys {
-        let setter = "set" + key.prefix(1).uppercased() + String(key.dropFirst()) + ":"
-        let sel = NSSelectorFromString(setter)
-        if root.responds(to: sel) {
-            root.perform(sel, with: NSNumber(value: false))
-        }
-    }
-    if #available(macOS 14.4, *) {
-        let sel = NSSelectorFromString("setInlinePredictionType:")
-        if root.responds(to: sel) {
-            // NSTextInputTraitType.no.rawValue == 2
-            root.perform(sel, with: NSNumber(value: 2))
-        }
-    }
-    for sub in root.subviews {
-        disableTextChecking(sub)
     }
 }
 
