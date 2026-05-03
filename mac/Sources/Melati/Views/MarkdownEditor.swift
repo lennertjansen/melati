@@ -16,7 +16,7 @@ struct MarkdownEditor: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         let userContent = WKUserContentController()
-        userContent.add(context.coordinator, name: "noot")
+        userContent.add(context.coordinator, name: "melati")
         config.userContentController = userContent
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
         if #available(macOS 14.0, *) {
@@ -58,7 +58,7 @@ struct MarkdownEditor: NSViewRepresentable {
             guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
             switch type {
             case "ready":
-                _log("[noot.editor] ready")
+                _log("[melati.editor] ready")
                 ready = true
                 applyPendingState()
             case "change":
@@ -73,26 +73,26 @@ struct MarkdownEditor: NSViewRepresentable {
             case "blur":
                 Task { @MainActor in parent.onBlur?() }
             case "error":
-                _log("[noot.editor.error] %@:%@:%@ — %@", String(describing: body["source"] ?? ""), String(describing: body["line"] ?? ""), String(describing: body["col"] ?? ""), String(describing: body["message"] ?? ""))
+                _log("[melati.editor.error] %@:%@:%@ — %@", String(describing: body["source"] ?? ""), String(describing: body["line"] ?? ""), String(describing: body["col"] ?? ""), String(describing: body["message"] ?? ""))
             case "log":
                 let level = body["level"] as? String ?? "log"
                 let args = (body["args"] as? [String])?.joined(separator: " ") ?? ""
-                _log("[noot.editor.%@] %@", level, args)
+                _log("[melati.editor.%@] %@", level, args)
             default:
                 break
             }
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            _log("[noot.editor] webview didFinish")
+            _log("[melati.editor] webview didFinish")
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            _log("[noot.editor] webview didFailProvisional %@", error.localizedDescription)
+            _log("[melati.editor] webview didFailProvisional %@", error.localizedDescription)
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            _log("[noot.editor] webview didFail %@", error.localizedDescription)
+            _log("[melati.editor] webview didFail %@", error.localizedDescription)
         }
 
         func applyPendingState() {
@@ -100,16 +100,16 @@ struct MarkdownEditor: NSViewRepresentable {
             if parent.text != lastSentText {
                 lastSentText = parent.text
                 let escaped = jsonEscape(parent.text)
-                webView.evaluateJavaScript("window.nootSetContent && window.nootSetContent(\(escaped))", completionHandler: nil)
+                webView.evaluateJavaScript("window.melatiSetContent && window.melatiSetContent(\(escaped))", completionHandler: nil)
             }
             if lastSentReadOnly != parent.readOnly {
                 lastSentReadOnly = parent.readOnly
-                webView.evaluateJavaScript("window.nootSetReadOnly && window.nootSetReadOnly(\(parent.readOnly ? "true" : "false"))", completionHandler: nil)
+                webView.evaluateJavaScript("window.melatiSetReadOnly && window.melatiSetReadOnly(\(parent.readOnly ? "true" : "false"))", completionHandler: nil)
             }
             if lastSentTheme != parent.colorScheme {
                 lastSentTheme = parent.colorScheme
                 let theme = parent.colorScheme == .dark ? "dark" : "light"
-                webView.evaluateJavaScript("window.nootSetTheme && window.nootSetTheme('\(theme)')", completionHandler: nil)
+                webView.evaluateJavaScript("window.melatiSetTheme && window.melatiSetTheme('\(theme)')", completionHandler: nil)
             }
         }
 

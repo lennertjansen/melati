@@ -12,7 +12,7 @@ struct KeyStore {
     let account: String
 
     static let `default` = KeyStore(
-        service: "com.lennertjansen.noot",
+        service: "com.lennertjansen.melati",
         account: "primary-database-key"
     )
 
