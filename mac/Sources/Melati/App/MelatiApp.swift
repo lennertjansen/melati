@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct NootApp: App {
+struct MelatiApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {

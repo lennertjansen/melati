@@ -7,18 +7,18 @@ declare global {
   interface Window {
     webkit?: {
       messageHandlers: {
-        noot?: { postMessage: (m: unknown) => void };
+        melati?: { postMessage: (m: unknown) => void };
       };
     };
-    nootSetContent?: (md: string) => void;
-    nootSetReadOnly?: (ro: boolean) => void;
-    nootSetTheme?: (theme: "light" | "dark") => void;
-    nootFocus?: () => void;
+    melatiSetContent?: (md: string) => void;
+    melatiSetReadOnly?: (ro: boolean) => void;
+    melatiSetTheme?: (theme: "light" | "dark") => void;
+    melatiFocus?: () => void;
   }
 }
 
 function post(msg: Record<string, unknown>) {
-  window.webkit?.messageHandlers.noot?.postMessage(msg);
+  window.webkit?.messageHandlers.melati?.postMessage(msg);
 }
 
 window.onerror = (message, source, lineno, colno, error) => {
@@ -79,7 +79,7 @@ const editor = new Editor({
 
 let lastReceived = "";
 
-window.nootSetContent = (md: string) => {
+window.melatiSetContent = (md: string) => {
   if (md === lastReceived) return;
   lastReceived = md;
   const current = (editor.storage as any).markdown.getMarkdown();
@@ -88,11 +88,11 @@ window.nootSetContent = (md: string) => {
   }
 };
 
-window.nootSetReadOnly = (ro: boolean) => {
+window.melatiSetReadOnly = (ro: boolean) => {
   editor.setEditable(!ro);
 };
 
-window.nootSetTheme = (theme: "light" | "dark") => {
+window.melatiSetTheme = (theme: "light" | "dark") => {
   if (theme === "dark") {
     document.documentElement.classList.add("dark");
   } else {
@@ -100,7 +100,7 @@ window.nootSetTheme = (theme: "light" | "dark") => {
   }
 };
 
-window.nootFocus = () => {
+window.melatiFocus = () => {
   editor.commands.focus();
 };
 
