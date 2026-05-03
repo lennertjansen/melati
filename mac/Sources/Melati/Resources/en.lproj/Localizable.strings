@@ -11,3 +11,4 @@
 "cal.next" = "Next month";
 "relative.today" = "Today";
 "relative.yesterday" = "Yesterday";
+"cmd.newEntry" = "New Entry";
