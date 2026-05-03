@@ -62,6 +62,10 @@ struct AppShell: View {
             selectedDate = nil
             scheduleHide()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .melatiNewEntry)) { _ in
+            selectedDate = nil
+            selection = .today
+        }
     }
 
     @ViewBuilder
