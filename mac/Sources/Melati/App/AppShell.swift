@@ -19,7 +19,7 @@ struct AppShell: View {
     @State private var hideTask: Task<Void, Never>? = nil
 
     private let sidebarWidth: CGFloat = 168
-    private let edgeTriggerWidth: CGFloat = 6
+    private let edgeTriggerWidth: CGFloat = 28
     private let hideDelay: Duration = .milliseconds(400)
 
     var body: some View {
