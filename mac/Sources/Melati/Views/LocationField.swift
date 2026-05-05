@@ -1,5 +1,19 @@
 import SwiftUI
 
+struct LocationDropdownContext {
+    let anchor: Anchor<CGRect>
+    let draft: String
+    let recents: [String]
+    let onSelect: (String) -> Void
+}
+
+struct LocationDropdownContextKey: PreferenceKey {
+    static var defaultValue: LocationDropdownContext? = nil
+    static func reduce(value: inout LocationDropdownContext?, nextValue: () -> LocationDropdownContext?) {
+        if let next = nextValue() { value = next }
+    }
+}
+
 struct LocationField: View {
     var value: String?
     var recents: [String]
@@ -32,38 +46,16 @@ struct LocationField: View {
                         .frame(height: 1)
                         .offset(y: 4)
                 }
-                .overlay(alignment: .topLeading) {
-                    if focused && !filteredRecents.isEmpty {
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(filteredRecents.prefix(6), id: \.self) { loc in
-                                Button {
-                                    draft = loc
-                                    commit()
-                                } label: {
-                                    Text(loc)
-                                        .font(.lora(size: 13))
-                                        .foregroundStyle(Color("Foreground"))
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 5)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                                .buttonStyle(.plain)
-                            }
+                .anchorPreference(key: LocationDropdownContextKey.self, value: .bounds) { anchor in
+                    LocationDropdownContext(
+                        anchor: anchor,
+                        draft: draft,
+                        recents: recents,
+                        onSelect: { picked in
+                            draft = picked
+                            commit()
                         }
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color("Background"))
-                                .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color("ForegroundSubtle").opacity(0.2), lineWidth: 0.5)
-                        )
-                        .frame(width: 200)
-                        .offset(x: 0, y: 26)
-                        .transition(.opacity)
-                        .zIndex(100)
-                    }
+                    )
                 }
                 .onAppear {
                     draft = value ?? ""
@@ -94,12 +86,6 @@ struct LocationField: View {
         }
     }
 
-    private var filteredRecents: [String] {
-        let q = draft.trimmingCharacters(in: .whitespaces).lowercased()
-        if q.isEmpty { return recents }
-        return recents.filter { $0.lowercased().contains(q) }
-    }
-
     private func commit() {
         let trimmed = draft.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty, trimmed != value {
@@ -111,5 +97,50 @@ struct LocationField: View {
     private func cancel() {
         draft = value ?? ""
         editing = false
+    }
+}
+
+struct LocationDropdownOverlay: View {
+    let context: LocationDropdownContext?
+
+    var body: some View {
+        GeometryReader { proxy in
+            if let context, let filtered = filter(context), !filtered.isEmpty {
+                let frame = proxy[context.anchor]
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(filtered.prefix(6), id: \.self) { loc in
+                        Button {
+                            context.onSelect(loc)
+                        } label: {
+                            Text(loc)
+                                .font(.lora(size: 13))
+                                .foregroundStyle(Color("Foreground"))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .frame(width: 200, alignment: .topLeading)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color("Background"))
+                        .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color("ForegroundSubtle").opacity(0.2), lineWidth: 0.5)
+                )
+                .offset(x: frame.minX, y: frame.maxY + 8)
+            }
+        }
+        .allowsHitTesting(context != nil)
+    }
+
+    private func filter(_ ctx: LocationDropdownContext) -> [String]? {
+        let q = ctx.draft.trimmingCharacters(in: .whitespaces).lowercased()
+        if q.isEmpty { return ctx.recents }
+        return ctx.recents.filter { $0.lowercased().contains(q) }
     }
 }
