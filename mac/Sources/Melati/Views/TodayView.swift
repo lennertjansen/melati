@@ -46,10 +46,24 @@ struct TodayView: View {
         .task {
             await load()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+            Task { await rollOverToToday() }
+        }
         .onDisappear {
             saveTask?.cancel()
             Task { await save() }
         }
+    }
+
+    private func rollOverToToday() async {
+        guard DateUtil.todayKey() != dateKey else { return }
+        saveTask?.cancel()
+        await save()
+        loaded = false
+        content = ""
+        existingCreatedAt = nil
+        existingLocation = nil
+        await load()
     }
 
     private func load() async {
