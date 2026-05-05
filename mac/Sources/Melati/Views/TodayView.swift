@@ -40,6 +40,9 @@ struct TodayView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .overlayPreferenceValue(LocationDropdownContextKey.self) { context in
+            LocationDropdownOverlay(context: context)
+        }
         .task {
             await load()
         }
