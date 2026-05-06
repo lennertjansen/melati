@@ -51,6 +51,13 @@ struct EntryDetailView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .background(
+            Button(action: onDismiss) { EmptyView() }
+                .keyboardShortcut("[", modifiers: [.command])
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        )
         .task(id: dateKey) {
             await load()
         }
