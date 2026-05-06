@@ -66,6 +66,12 @@ struct AppShell: View {
             selectedDate = nil
             selection = .today
         }
+        .onReceive(NotificationCenter.default.publisher(for: .melatiSelectTab)) { note in
+            if let tab = note.object as? NavTab {
+                selectedDate = nil
+                selection = tab
+            }
+        }
     }
 
     @ViewBuilder
