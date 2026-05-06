@@ -17,6 +17,7 @@ struct LocationDropdownContextKey: PreferenceKey {
 struct LocationField: View {
     var value: String?
     var recents: [String]
+    var suggestion: String? = nil
     var readOnly: Bool = false
     var onChange: (String) -> Void
 
@@ -58,7 +59,7 @@ struct LocationField: View {
                     )
                 }
                 .onAppear {
-                    draft = value ?? ""
+                    draft = (value?.isEmpty == false ? value : nil) ?? suggestion ?? ""
                     DispatchQueue.main.async { focused = true }
                 }
                 .onChange(of: focused) { _, isFocused in
@@ -76,6 +77,10 @@ struct LocationField: View {
                     Text(v)
                         .font(.lora(size: 14))
                         .foregroundStyle(Color("ForegroundSubtle"))
+                } else if let s = suggestion, !s.isEmpty {
+                    Text(s)
+                        .font(.lora(size: 14).italic())
+                        .foregroundStyle(Color("ForegroundSubtle").opacity(0.55))
                 } else {
                     Text("location")
                         .font(.lora(size: 14))

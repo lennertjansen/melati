@@ -37,6 +37,7 @@ struct EntryDetailView: View {
                     createdAt: createdAt,
                     location: location,
                     recents: [],
+                    locationSuggestion: nil,
                     readOnly: true,
                     onLocationChange: nil
                 )

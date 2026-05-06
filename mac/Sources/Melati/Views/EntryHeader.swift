@@ -5,6 +5,7 @@ struct EntryHeader: View {
     let createdAt: Date?
     let location: String?
     let recents: [String]
+    let locationSuggestion: String?
     let readOnly: Bool
     let onLocationChange: ((String) -> Void)?
 
@@ -26,6 +27,7 @@ struct EntryHeader: View {
                 LocationField(
                     value: location,
                     recents: recents,
+                    suggestion: locationSuggestion,
                     readOnly: false,
                     onChange: { onLocationChange?($0) }
                 )
