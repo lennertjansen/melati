@@ -2,6 +2,7 @@ import SwiftUI
 
 extension Notification.Name {
     static let melatiNewEntry = Notification.Name("MelatiNewEntry")
+    static let melatiSelectTab = Notification.Name("MelatiSelectTab")
 }
 
 @main
@@ -25,6 +26,20 @@ struct MelatiApp: App {
                     NotificationCenter.default.post(name: .melatiNewEntry, object: nil)
                 }
                 .keyboardShortcut("n", modifiers: [.command])
+            }
+            CommandMenu(String(localized: "menu.view")) {
+                Button(String(localized: "tab.today")) {
+                    NotificationCenter.default.post(name: .melatiSelectTab, object: NavTab.today)
+                }
+                .keyboardShortcut("1", modifiers: [.command])
+                Button(String(localized: "tab.entries")) {
+                    NotificationCenter.default.post(name: .melatiSelectTab, object: NavTab.entries)
+                }
+                .keyboardShortcut("2", modifiers: [.command])
+                Button(String(localized: "tab.calendar")) {
+                    NotificationCenter.default.post(name: .melatiSelectTab, object: NavTab.calendar)
+                }
+                .keyboardShortcut("3", modifiers: [.command])
             }
         }
     }
