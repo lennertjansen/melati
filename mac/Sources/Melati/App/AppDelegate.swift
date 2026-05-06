@@ -1,6 +1,14 @@
 import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        DispatchQueue.main.async {
+            for window in NSApplication.shared.windows where window.canBecomeMain {
+                window.setFrameAutosaveName("MelatiMain")
+            }
+        }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         let sem = DispatchSemaphore(value: 0)
         Task { @MainActor in
