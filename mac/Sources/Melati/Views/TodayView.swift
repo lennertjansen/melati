@@ -21,6 +21,7 @@ struct TodayView: View {
                     createdAt: existingCreatedAt,
                     location: existingLocation,
                     recents: recentLocations,
+                    locationSuggestion: locationSuggestion,
                     readOnly: false,
                     onLocationChange: { newLoc in
                         existingLocation = newLoc
@@ -82,6 +83,11 @@ struct TodayView: View {
             print("Load failed: \(error)")
         }
         loaded = true
+    }
+
+    private var locationSuggestion: String? {
+        guard (existingLocation ?? "").isEmpty else { return nil }
+        return recentLocations.first
     }
 
     private func currentEntry() -> JournalEntry {
