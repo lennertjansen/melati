@@ -61,7 +61,7 @@ struct CalendarView: View {
     }
 
     private var weekdayHeader: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 4) {
             ForEach(DateUtil.getWeekdayLabels()) { label in
                 Text(label.label)
                     .font(.system(size: 11, weight: .semibold))
@@ -105,9 +105,7 @@ struct CalendarView: View {
                     Text("\(dayNum)")
                         .font(.system(size: 12, weight: isToday ? .semibold : .regular))
                         .foregroundStyle(
-                            isToday ? Color("Background")
-                            : day.isCurrentMonth ? Color("Foreground")
-                            : Color("ForegroundSubtle").opacity(0.4)
+                            isToday ? Color("Background") : Color("Foreground")
                         )
                 }
                 .frame(width: 22, height: 22)
