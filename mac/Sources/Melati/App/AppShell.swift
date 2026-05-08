@@ -13,10 +13,12 @@ enum NavTab: Hashable, CaseIterable {
 }
 
 struct AppShell: View {
+    @Environment(AppEnvironment.self) private var env
     @State private var selection: NavTab = .today
     @State private var sidebarVisible: Bool = false
     @State private var selectedDate: String? = nil
     @State private var hideTask: Task<Void, Never>? = nil
+    @State private var entryDates: [String] = []
 
     private let sidebarWidth: CGFloat = 168
     private let edgeTriggerWidth: CGFloat = 28
@@ -62,6 +64,10 @@ struct AppShell: View {
             selectedDate = nil
             scheduleHide()
         }
+        .onChange(of: selectedDate) { _, new in
+            guard new != nil else { return }
+            Task { entryDates = (try? await env.store.listDates()) ?? [] }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .melatiNewEntry)) { _ in
             selectedDate = nil
             selection = .today
@@ -77,7 +83,13 @@ struct AppShell: View {
     @ViewBuilder
     private var detailContent: some View {
         if let date = selectedDate {
-            EntryDetailView(dateKey: date) { selectedDate = nil }
+            let idx = entryDates.firstIndex(of: date)
+            EntryDetailView(
+                dateKey: date,
+                onDismiss: { selectedDate = nil },
+                onPrev: olderDate(from: idx).map { older in { selectedDate = older } },
+                onNext: newerDate(from: idx).map { newer in { selectedDate = newer } }
+            )
         } else {
             switch selection {
             case .today:
@@ -88,6 +100,18 @@ struct AppShell: View {
                 CalendarView(onSelectDate: { selectedDate = $0 })
             }
         }
+    }
+
+    private func olderDate(from idx: Array<String>.Index?) -> String? {
+        guard let idx else { return nil }
+        let next = idx + 1
+        return entryDates.indices.contains(next) ? entryDates[next] : nil
+    }
+
+    private func newerDate(from idx: Array<String>.Index?) -> String? {
+        guard let idx else { return nil }
+        let prev = idx - 1
+        return entryDates.indices.contains(prev) ? entryDates[prev] : nil
     }
 
     private func showSidebar() {
