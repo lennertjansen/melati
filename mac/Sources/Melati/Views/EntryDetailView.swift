@@ -6,6 +6,8 @@ struct EntryDetailView: View {
 
     let dateKey: String
     let onDismiss: () -> Void
+    var onPrev: (() -> Void)? = nil
+    var onNext: (() -> Void)? = nil
 
     @State private var content: String = ""
     @State private var createdAt: Date?
@@ -53,11 +55,19 @@ struct EntryDetailView: View {
             }
         }
         .background(
-            Button(action: onDismiss) { EmptyView() }
-                .keyboardShortcut("[", modifiers: [.command])
-                .opacity(0)
-                .frame(width: 0, height: 0)
-                .accessibilityHidden(true)
+            Group {
+                Button(action: onDismiss) { EmptyView() }
+                    .keyboardShortcut("[", modifiers: [.command])
+                Button { onPrev?() } label: { EmptyView() }
+                    .keyboardShortcut(.leftArrow, modifiers: [])
+                    .disabled(onPrev == nil)
+                Button { onNext?() } label: { EmptyView() }
+                    .keyboardShortcut(.rightArrow, modifiers: [])
+                    .disabled(onNext == nil)
+            }
+            .opacity(0)
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
         )
         .task(id: dateKey) {
             await load()
