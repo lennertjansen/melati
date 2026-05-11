@@ -3,7 +3,7 @@
 "tab.calendar" = "Kalender";
 "back" = "Terug";
 "placeholder" = "Begin met schrijven…";
-"location.set" = "Locatie instellen";
+"location" = "locatie";
 "list.flat" = "Plat";
 "list.grouped" = "Gegroepeerd";
 "list.empty" = "Nog geen notities";
