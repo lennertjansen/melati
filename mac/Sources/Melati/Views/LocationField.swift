@@ -33,7 +33,7 @@ struct LocationField: View {
                     .foregroundStyle(Color("ForegroundSubtle"))
             }
         } else if editing {
-            TextField("location", text: $draft)
+            TextField(String(localized: "location"), text: $draft)
                 .textFieldStyle(.plain)
                 .font(.lora(size: 14))
                 .foregroundStyle(Color("Foreground"))
@@ -82,7 +82,7 @@ struct LocationField: View {
                         .font(.lora(size: 14).italic())
                         .foregroundStyle(Color("ForegroundSubtle").opacity(0.55))
                 } else {
-                    Text("location")
+                    Text(String(localized: "location"))
                         .font(.lora(size: 14))
                         .foregroundStyle(Color("ForegroundSubtle").opacity(0.4))
                 }

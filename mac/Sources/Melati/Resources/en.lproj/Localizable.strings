@@ -3,7 +3,7 @@
 "tab.calendar" = "Calendar";
 "back" = "Back";
 "placeholder" = "Start writing…";
-"location.set" = "Set location";
+"location" = "location";
 "list.flat" = "Flat";
 "list.grouped" = "Grouped";
 "list.empty" = "No entries yet";
