@@ -26,6 +26,17 @@ struct LocationField: View {
     @FocusState private var focused: Bool
 
     var body: some View {
+        Group {
+            content
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .melatiFocusLocation)) { _ in
+            guard !readOnly else { return }
+            if !editing { editing = true } else { focused = true }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if readOnly {
             if let v = value, !v.isEmpty {
                 Text(v)

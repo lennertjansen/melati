@@ -3,6 +3,7 @@ import SwiftUI
 extension Notification.Name {
     static let melatiNewEntry = Notification.Name("MelatiNewEntry")
     static let melatiSelectTab = Notification.Name("MelatiSelectTab")
+    static let melatiFocusLocation = Notification.Name("MelatiFocusLocation")
 }
 
 @main
@@ -40,6 +41,11 @@ struct MelatiApp: App {
                     NotificationCenter.default.post(name: .melatiSelectTab, object: NavTab.calendar)
                 }
                 .keyboardShortcut("3", modifiers: [.command])
+                Divider()
+                Button(String(localized: "cmd.focusLocation")) {
+                    NotificationCenter.default.post(name: .melatiFocusLocation, object: nil)
+                }
+                .keyboardShortcut("e", modifiers: [.command])
             }
         }
     }

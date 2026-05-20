@@ -12,4 +12,5 @@
 "relative.today" = "Today";
 "relative.yesterday" = "Yesterday";
 "cmd.newEntry" = "New Entry";
+"cmd.focusLocation" = "Edit Location";
 "menu.view" = "View";

@@ -12,4 +12,5 @@
 "relative.today" = "Vandaag";
 "relative.yesterday" = "Gisteren";
 "cmd.newEntry" = "Nieuwe notitie";
+"cmd.focusLocation" = "Locatie bewerken";
 "menu.view" = "Beeld";
