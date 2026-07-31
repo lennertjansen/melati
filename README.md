@@ -1,4 +1,4 @@
-# 🌸 Melati
+# 🌸 Noot
 
 Private daily journaling. Web + macOS, sharing one TipTap editor.
 
@@ -21,8 +21,8 @@ Requires macOS 14+, Xcode 15+, [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
 ```sh
 cd mac/editor-embed && npm i && npm run build   # build embedded editor
-cd .. && xcodegen                                # regenerate Melati.xcodeproj
-open Melati.xcodeproj                            # build & run
+cd .. && xcodegen                                # regenerate Noot.xcodeproj
+open Noot.xcodeproj                            # build & run
 ```
 
 Shortcuts: ⌘N new entry · ⌘1/⌘2/⌘3 today/entries/calendar · ←/→ flip entries · ⌘[ back · ⌘? help.
