@@ -1,4 +1,4 @@
-# 🌸 Noot
+# 🌰 Noot
 
 Private daily journaling. Web + macOS, sharing one TipTap editor.
 
