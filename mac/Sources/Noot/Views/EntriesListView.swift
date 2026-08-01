@@ -5,7 +5,7 @@ struct EntriesListView: View {
 
     let onSelectDate: (String) -> Void
 
-    @AppStorage("melati.listGrouping") private var groupingRaw: String = "flat"
+    @AppStorage("noot.listGrouping") private var groupingRaw: String = "flat"
     @State private var summaries: [EntrySummary] = []
     @State private var loaded: Bool = false
 

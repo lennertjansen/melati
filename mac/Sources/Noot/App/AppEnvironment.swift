@@ -15,7 +15,7 @@ final class AppEnvironment {
             let url = try JournalStore.defaultDatabaseURL()
             self.store = try JournalStore(path: url.path, key: key)
         } catch {
-            fatalError("Melati failed to initialize encrypted storage: \(error)")
+            fatalError("Noot failed to initialize encrypted storage: \(error)")
         }
     }
 
