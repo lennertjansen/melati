@@ -16,18 +16,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
-          key: spm-${{ runner.os }}-${{ hashFiles('mac/project.yml') }}
+          key: spm-${{ runner.os }}-${{ hashFiles('apple/project.yml') }}
           restore-keys: spm-${{ runner.os }}-
 
       - name: Install XcodeGen
         run: brew install xcodegen
 
       - name: Generate project
-        working-directory: mac
+        working-directory: apple
         run: xcodegen
 
       - name: Build and test
-        working-directory: mac
+        working-directory: apple
         run: |
           xcodebuild -project Noot.xcodeproj -scheme Noot \
             -destination 'platform=macOS' test | tail -100
@@ -49,7 +49,7 @@ jobs:
           pnpm check
 
       - name: Editor embed builds
-        working-directory: mac/editor-embed
+        working-directory: apple/editor-embed
         run: |
           npm ci
           npm run build

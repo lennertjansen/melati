@@ -2,19 +2,19 @@
 
 Private daily journaling for macOS.
 
-Native SwiftUI app. SQLCipher-encrypted entries with the key in Keychain. The TipTap editor is bundled as a single-file HTML page (`mac/editor-embed`) and hosted in a `WKWebView`.
+Native SwiftUI app. SQLCipher-encrypted entries with the key in Keychain. The TipTap editor is bundled as a single-file HTML page (`apple/editor-embed`) and hosted in a `WKWebView`.
 
-## Build (`mac/`)
+## Build (`apple/`)
 
 Requires macOS 14+, Xcode 15+, [XcodeGen](https://github.com/yonaskolb/XcodeGen), Node.
 
 ```sh
-cd mac/editor-embed && npm i && npm run build   # build embedded editor
+cd apple/editor-embed && npm i && npm run build   # build embedded editor
 cd .. && xcodegen                                # regenerate Noot.xcodeproj
 open Noot.xcodeproj                              # build & run
 ```
 
-Lint (Biome, covers `mac/editor-embed`):
+Lint (Biome, covers `apple/editor-embed`):
 
 ```sh
 pnpm i && pnpm check
