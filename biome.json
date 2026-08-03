@@ -9,9 +9,9 @@
 		"ignoreUnknown": false,
 		"includes": [
 			"*.json",
-			"mac/editor-embed/**/*.ts",
-			"mac/editor-embed/package.json",
-			"mac/editor-embed/tsconfig.json"
+			"apple/editor-embed/**/*.ts",
+			"apple/editor-embed/package.json",
+			"apple/editor-embed/tsconfig.json"
 		]
 	},
 	"formatter": {
