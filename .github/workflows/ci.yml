@@ -28,9 +28,13 @@ jobs:
 
       - name: Build and test
         working-directory: apple
+        # Ad-hoc signing overrides: the runner has no certificate for the
+        # DEVELOPMENT_TEAM set in project.yml.
         run: |
           xcodebuild -project Noot.xcodeproj -scheme Noot \
-            -destination 'platform=macOS' test | tail -100
+            -destination 'platform=macOS' \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
+            test | tail -100
 
   lint:
     name: Lint + editor embed build
