@@ -75,8 +75,6 @@ struct TodayView: View {
                 content = existing.content
                 existingCreatedAt = existing.createdAt
                 existingLocation = existing.location
-            } else {
-                existingCreatedAt = Date()
             }
             recentLocations = (try? await env.store.loadRecentLocations()) ?? []
         } catch {
@@ -100,6 +98,8 @@ struct TodayView: View {
     }
 
     private func scheduleAutosave() {
+        // createdAt marks when writing started: stamp on first edit, not on view load
+        if existingCreatedAt == nil { existingCreatedAt = Date() }
         env.pendingEntry = currentEntry()
         saveTask?.cancel()
         saveTask = Task {
@@ -111,6 +111,9 @@ struct TodayView: View {
 
     private func save() async {
         guard loaded else { return }
+        // never edited and nothing to persist: don't create an empty entry
+        // (blur/disappear fire save() even on untouched days)
+        if existingCreatedAt == nil && content.isEmpty && (existingLocation ?? "").isEmpty { return }
         let entry = currentEntry()
         do {
             try await env.store.put(entry)
