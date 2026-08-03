@@ -53,16 +53,25 @@ actor JournalStore {
             """)
             try db.execute("PRAGMA user_version = 1")
         }
+        if version < 2 {
+            // Sync prerequisite: last-writer-wins needs a per-entry modification
+            // clock. ISO8601 with fractional seconds sorts lexicographically ==
+            // chronologically, so string comparison is safe.
+            try db.execute("ALTER TABLE entries ADD COLUMN modified_at TEXT")
+            try db.execute("UPDATE entries SET modified_at = COALESCE(created_at, date || 'T00:00:00.000Z')")
+            try db.execute("PRAGMA user_version = 2")
+        }
     }
 
     func get(date: String) throws -> JournalEntry? {
-        let stmt = try db.prepare("SELECT date, content, created_at, location FROM entries WHERE date = ?")
+        let stmt = try db.prepare("SELECT date, content, created_at, location, modified_at FROM entries WHERE date = ?")
         for row in try stmt.run(date) {
             return JournalEntry(
                 date: row[0] as? String ?? "",
                 content: row[1] as? String ?? "",
                 createdAt: (row[2] as? String).flatMap(Self.iso.date(from:)),
-                location: row[3] as? String
+                location: row[3] as? String,
+                modifiedAt: (row[4] as? String).flatMap(Self.iso.date(from:))
             )
         }
         return nil
@@ -70,10 +79,16 @@ actor JournalStore {
 
     func put(_ entry: JournalEntry) throws {
         let createdAtStr = entry.createdAt.map { Self.iso.string(from: $0) }
+        // modified_at is store-authoritative: stamped on every write, never
+        // taken from the caller. (Sync's putFromSync will differ - by design.)
+        let modifiedAtStr = Self.iso.string(from: Date())
         try db.run("""
-            INSERT INTO entries (date, content, created_at, location) VALUES (?, ?, ?, ?)
-            ON CONFLICT(date) DO UPDATE SET content = excluded.content, location = excluded.location;
-        """, entry.date, entry.content, createdAtStr, entry.location)
+            INSERT INTO entries (date, content, created_at, location, modified_at) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(date) DO UPDATE SET
+                content = excluded.content,
+                location = excluded.location,
+                modified_at = excluded.modified_at;
+        """, entry.date, entry.content, createdAtStr, entry.location, modifiedAtStr)
     }
 
     func listDates() throws -> [String] {
