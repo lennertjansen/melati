@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  mac:
+    name: Mac build + tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('mac/project.yml') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        working-directory: mac
+        run: xcodegen
+
+      - name: Build and test
+        working-directory: mac
+        run: |
+          xcodebuild -project Noot.xcodeproj -scheme Noot \
+            -destination 'platform=macOS' test | tail -100
+
+  lint:
+    name: Lint + editor embed build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Biome check
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm check
+
+      - name: Editor embed builds
+        working-directory: mac/editor-embed
+        run: |
+          npm ci
+          npm run build
