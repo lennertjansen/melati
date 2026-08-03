@@ -51,7 +51,7 @@ struct LocationField: View {
                 .focused($focused)
                 .frame(width: 160)
                 .onSubmit { commit() }
-                .onExitCommand { cancel() }
+                .onEscape { cancel() }
                 .overlay(alignment: .bottom) {
                     Rectangle()
                         .fill(Color("ForegroundSubtle").opacity(0.35))
@@ -116,6 +116,19 @@ struct LocationField: View {
     }
 }
 
+private extension View {
+    /// Escape-to-cancel. `.onExitCommand` does not exist on iOS; escape there
+    /// only matters with a hardware keyboard, handled later if ever needed.
+    @ViewBuilder
+    func onEscape(perform action: @escaping () -> Void) -> some View {
+        #if os(macOS)
+        onExitCommand(perform: action)
+        #else
+        self
+        #endif
+    }
+}
+
 struct LocationDropdownOverlay: View {
     let context: LocationDropdownContext?
 
@@ -148,7 +161,9 @@ struct LocationDropdownOverlay: View {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(Color("ForegroundSubtle").opacity(0.2), lineWidth: 0.5)
                 )
-                .offset(x: frame.minX, y: frame.maxY + 8)
+                // Clamp so the 200pt dropdown never runs off the right edge
+                // (latent on wide mac windows, guaranteed at iPhone widths).
+                .offset(x: max(8, min(frame.minX, proxy.size.width - 200 - 8)), y: frame.maxY + 8)
             }
         }
         .allowsHitTesting(context != nil)

@@ -13,11 +13,23 @@ fileGroups:
 settings:
   base:
     SWIFT_VERSION: "5.10"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: 6VG5LWYXK5
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    ENABLE_HARDENED_RUNTIME: YES
+
+schemes:
+  Noot:
+    build:
+      targets:
+        Noot: all
+        NootTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - NootTests
 
 packages:
   SwiftSQLCipher:
@@ -30,6 +42,7 @@ targets:
     platform: macOS
     sources:
       - path: Sources/Noot
+      - path: Sources/NootMac
         excludes:
           - "Info.plist"
           - "Noot.entitlements"
@@ -42,7 +55,7 @@ targets:
       - package: SwiftSQLCipher
         product: SQLiteDB
     info:
-      path: Sources/Noot/Info.plist
+      path: Sources/NootMac/Info.plist
       properties:
         CFBundleDisplayName: Noot
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -51,7 +64,7 @@ targets:
         NSHumanReadableCopyright: ""
         ATSApplicationFontsPath: .
     entitlements:
-      path: Sources/Noot/Noot.entitlements
+      path: Sources/NootMac/Noot.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
@@ -69,18 +82,20 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_PREVIEWS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
+        ENABLE_HARDENED_RUNTIME: YES
 
+  # Hostless on purpose: a TEST_HOST launches the real app, which opens the
+  # real diary DB and triggers keychain auth dialogs (hangs headless/CI runs).
+  # Shared sources compile directly into the test bundle instead.
   NootTests:
     type: bundle.unit-test
     platform: macOS
     sources:
       - path: Tests/NootTests
+      - path: Sources/Noot
     dependencies:
-      - target: Noot
       - package: SwiftSQLCipher
         product: SQLiteDB
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        BUNDLE_LOADER: $(TEST_HOST)
-        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Noot.app/Contents/MacOS/Noot

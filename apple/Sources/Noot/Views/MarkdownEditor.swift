@@ -1,8 +1,14 @@
-import AppKit
 import SwiftUI
 import WebKit
+#if os(macOS)
+import AppKit
+private typealias PlatformViewRepresentable = NSViewRepresentable
+#else
+import UIKit
+private typealias PlatformViewRepresentable = UIViewRepresentable
+#endif
 
-struct MarkdownEditor: NSViewRepresentable {
+struct MarkdownEditor: PlatformViewRepresentable {
     @Binding var text: String
     var readOnly: Bool = false
     var colorScheme: ColorScheme = .light
@@ -13,18 +19,36 @@ struct MarkdownEditor: NSViewRepresentable {
         Coordinator(self)
     }
 
-    func makeNSView(context: Context) -> WKWebView {
+    #if os(macOS)
+    func makeNSView(context: Context) -> WKWebView { makeWebView(context: context) }
+    func updateNSView(_ webView: WKWebView, context: Context) { update(webView, context: context) }
+    #else
+    func makeUIView(context: Context) -> WKWebView { makeWebView(context: context) }
+    func updateUIView(_ webView: WKWebView, context: Context) { update(webView, context: context) }
+    #endif
+
+    private func makeWebView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         let userContent = WKUserContentController()
         userContent.add(context.coordinator, name: "noot")
         config.userContentController = userContent
+        config.allowsInlinePredictions = false
+        #if os(macOS)
+        // Private KVC key; macOS-only. On iOS this raises NSUnknownKeyException.
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
-        if #available(macOS 14.0, *) {
-            config.allowsInlinePredictions = false
-        }
+        #endif
 
         let webView = WKWebView(frame: .zero, configuration: config)
+        #if os(macOS)
+        // Private KVC key; the documented iOS equivalents are below.
         webView.setValue(false, forKey: "drawsBackground")
+        #else
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        webView.scrollView.keyboardDismissMode = .interactive
+        webView.isInspectable = true
+        #endif
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         context.coordinator.webView = webView
@@ -37,7 +61,7 @@ struct MarkdownEditor: NSViewRepresentable {
         return webView
     }
 
-    func updateNSView(_ webView: WKWebView, context: Context) {
+    private func update(_ webView: WKWebView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.applyPendingState()
     }
