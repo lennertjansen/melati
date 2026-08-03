@@ -1,21 +1,21 @@
 {
-  "name": "noot-editor-embed",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "build": "vite build"
-  },
-  "dependencies": {
-    "@tiptap/core": "^3.22.4",
-    "@tiptap/extension-placeholder": "^3.22.5",
-    "@tiptap/pm": "^3.22.4",
-    "@tiptap/starter-kit": "^3.22.4",
-    "tiptap-markdown": "^0.9.0"
-  },
-  "devDependencies": {
-    "typescript": "~6.0.2",
-    "vite": "^8.0.4",
-    "vite-plugin-singlefile": "^2.0.3"
-  }
+	"name": "noot-editor-embed",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"build": "vite build"
+	},
+	"dependencies": {
+		"@tiptap/core": "^3.22.4",
+		"@tiptap/extension-placeholder": "^3.22.5",
+		"@tiptap/pm": "^3.22.4",
+		"@tiptap/starter-kit": "^3.22.4",
+		"tiptap-markdown": "^0.9.0"
+	},
+	"devDependencies": {
+		"typescript": "~6.0.2",
+		"vite": "^8.0.4",
+		"vite-plugin-singlefile": "^2.0.3"
+	}
 }
