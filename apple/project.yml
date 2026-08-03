@@ -18,6 +18,19 @@ settings:
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
 
+schemes:
+  Noot:
+    build:
+      targets:
+        Noot: all
+        NootTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - NootTests
+
 packages:
   SwiftSQLCipher:
     url: https://github.com/skiptools/swift-sqlcipher.git
@@ -71,17 +84,18 @@ targets:
         SWIFT_EMIT_LOC_STRINGS: YES
         ENABLE_HARDENED_RUNTIME: YES
 
+  # Hostless on purpose: a TEST_HOST launches the real app, which opens the
+  # real diary DB and triggers keychain auth dialogs (hangs headless/CI runs).
+  # Shared sources compile directly into the test bundle instead.
   NootTests:
     type: bundle.unit-test
     platform: macOS
     sources:
       - path: Tests/NootTests
+      - path: Sources/Noot
     dependencies:
-      - target: Noot
       - package: SwiftSQLCipher
         product: SQLiteDB
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        BUNDLE_LOADER: $(TEST_HOST)
-        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Noot.app/Contents/MacOS/Noot

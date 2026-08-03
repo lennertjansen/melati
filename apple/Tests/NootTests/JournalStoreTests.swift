@@ -1,5 +1,5 @@
 import XCTest
-@testable import Noot
+@preconcurrency import SQLiteDB
 
 final class JournalStoreTests: XCTestCase {
     private var dbPath: String!
@@ -88,6 +88,57 @@ final class JournalStoreTests: XCTestCase {
         XCTAssertEqual(EntryUtil.extractPreview(from: "`code` here"), "code here")
         XCTAssertEqual(EntryUtil.extractPreview(from: "\n\nlater line"), "later line")
         XCTAssertEqual(EntryUtil.extractPreview(from: ""), "")
+    }
+
+    func testPutStampsModifiedAt() async throws {
+        let key = randomKey()
+        let store = try JournalStore(path: dbPath, key: key)
+        let before = Date().addingTimeInterval(-1)
+        try await store.put(JournalEntry(date: "2026-08-03", content: "v1", createdAt: nil, location: nil))
+        let first = try await store.get(date: "2026-08-03")
+        let firstStamp = try XCTUnwrap(first?.modifiedAt)
+        XCTAssertGreaterThan(firstStamp, before, "modified_at must be stamped at write time")
+
+        try await store.put(JournalEntry(date: "2026-08-03", content: "v2", createdAt: nil, location: nil))
+        let second = try await store.get(date: "2026-08-03")
+        let secondStamp = try XCTUnwrap(second?.modifiedAt)
+        XCTAssertGreaterThanOrEqual(secondStamp, firstStamp, "every put() must bump modified_at")
+    }
+
+    func testMigrationV1ToV2BackfillsModifiedAt() async throws {
+        let key = randomKey()
+        // Build a v1-shaped DB by hand (no modified_at column), then reopen
+        // through JournalStore and assert the migration ran.
+        do {
+            let db = try Connection(dbPath)
+            let hex = key.map { String(format: "%02x", $0) }.joined()
+            try db.execute("PRAGMA key = \"x'\(hex)'\"")
+            try db.execute("""
+                CREATE TABLE entries (
+                    date TEXT PRIMARY KEY,
+                    content TEXT NOT NULL,
+                    created_at TEXT,
+                    location TEXT
+                ) WITHOUT ROWID;
+            """)
+            try db.run(
+                "INSERT INTO entries (date, content, created_at, location) VALUES (?, ?, ?, ?)",
+                "2026-05-01", "with created_at", "2026-05-01T09:30:00.000Z", nil as String?
+            )
+            try db.run(
+                "INSERT INTO entries (date, content, created_at, location) VALUES (?, ?, ?, ?)",
+                "2026-05-02", "without created_at", nil as String?, nil as String?
+            )
+            try db.execute("PRAGMA user_version = 1")
+        }
+
+        let store = try JournalStore(path: dbPath, key: key)
+        let withCreated = try await store.get(date: "2026-05-01")
+        XCTAssertEqual(withCreated?.modifiedAt, withCreated?.createdAt,
+                       "backfill must copy created_at into modified_at")
+        let withoutCreated = try await store.get(date: "2026-05-02")
+        XCTAssertNotNil(withoutCreated?.modifiedAt,
+                        "backfill must synthesize midnight stamp when created_at is null")
     }
 
     private func randomKey() -> Data {
