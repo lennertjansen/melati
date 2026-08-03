@@ -13,12 +13,14 @@ enum FontRegistry {
 
 extension Font {
     static func lora(size: CGFloat, weight: Weight = .regular) -> Font {
+        // PostScript instance names, consistently - mixing the family name
+        // ("Lora") with PS names resolves on macOS but not reliably on iOS.
         let name: String
         switch weight {
         case .bold, .heavy, .black, .semibold:
             name = "Lora-Bold"
         default:
-            name = "Lora"
+            name = "Lora-Regular"
         }
         return .custom(name, size: size)
     }
