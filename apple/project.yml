@@ -17,7 +17,6 @@ settings:
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    ENABLE_HARDENED_RUNTIME: YES
 
 packages:
   SwiftSQLCipher:
@@ -30,6 +29,7 @@ targets:
     platform: macOS
     sources:
       - path: Sources/Noot
+      - path: Sources/NootMac
         excludes:
           - "Info.plist"
           - "Noot.entitlements"
@@ -42,7 +42,7 @@ targets:
       - package: SwiftSQLCipher
         product: SQLiteDB
     info:
-      path: Sources/Noot/Info.plist
+      path: Sources/NootMac/Info.plist
       properties:
         CFBundleDisplayName: Noot
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -51,7 +51,7 @@ targets:
         NSHumanReadableCopyright: ""
         ATSApplicationFontsPath: .
     entitlements:
-      path: Sources/Noot/Noot.entitlements
+      path: Sources/NootMac/Noot.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
@@ -69,6 +69,7 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_PREVIEWS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
+        ENABLE_HARDENED_RUNTIME: YES
 
   NootTests:
     type: bundle.unit-test

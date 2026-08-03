@@ -1,11 +1,5 @@
 import SwiftUI
 
-extension Notification.Name {
-    static let nootNewEntry = Notification.Name("NootNewEntry")
-    static let nootSelectTab = Notification.Name("NootSelectTab")
-    static let nootFocusLocation = Notification.Name("NootFocusLocation")
-}
-
 @main
 struct NootApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
