@@ -1,0 +1,24 @@
+/* Lora for the editor. The WKWebView's WebContent process cannot see fonts
+ * registered in the app process (CTFontManager .process scope), so the embed
+ * must carry its own. Inlined as data URLs by vite-plugin-singlefile. */
+
+@font-face {
+	font-family: "Lora";
+	font-style: normal;
+	font-weight: 400;
+	src: url("./fonts/Lora-Regular.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Lora";
+	font-style: italic;
+	font-weight: 400;
+	src: url("./fonts/Lora-Italic.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Lora";
+	font-style: normal;
+	font-weight: 700;
+	src: url("./fonts/Lora-Bold.woff2") format("woff2");
+}
