@@ -1,17 +1,5 @@
 import SwiftUI
 
-enum NavTab: Hashable, CaseIterable {
-    case today, entries, calendar
-
-    var labelKey: LocalizedStringResource {
-        switch self {
-        case .today: return "tab.today"
-        case .entries: return "tab.entries"
-        case .calendar: return "tab.calendar"
-        }
-    }
-}
-
 struct AppShell: View {
     @Environment(AppEnvironment.self) private var env
     @State private var selection: NavTab = .today
