@@ -31,6 +31,10 @@
 		<string>Lora-Bold.ttf</string>
 		<string>Lora-BoldItalic.ttf</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

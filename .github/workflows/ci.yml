@@ -28,12 +28,13 @@ jobs:
 
       - name: Build and test
         working-directory: apple
-        # Ad-hoc signing overrides: the runner has no certificate for the
-        # DEVELOPMENT_TEAM set in project.yml.
+        # No signing on CI: the runner has no team certificate, and since the
+        # iCloud entitlements landed, even ad-hoc signing demands a
+        # provisioning profile. Tests are hostless - nothing launches the app.
         run: |
           xcodebuild -project Noot.xcodeproj -scheme Noot \
             -destination 'platform=macOS' \
-            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
+            CODE_SIGNING_ALLOWED=NO \
             test | tail -100
 
   ios:
