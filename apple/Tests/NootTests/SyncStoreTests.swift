@@ -171,6 +171,34 @@ final class SyncStoreTests: XCTestCase {
         }
     }
 
+    func testNoOpSaveDoesNotBumpClockOrMarkPending() async throws {
+        // UI saves on every blur/tab-flip. If a content-identical save bumped
+        // modified_at, the device with the entry on screen would always win
+        // LWW and remote edits could never land (two-device test finding).
+        let store = try makeStore()
+        try await store.put(JournalEntry(date: "2026-08-04", content: "text", createdAt: nil, location: "Amsterdam"))
+        let fetched = try await store.get(date: "2026-08-04")
+        let stamp = isoString(try XCTUnwrap(fetched?.modifiedAt))
+        try await store.markUploaded(date: "2026-08-04", uploadedModifiedAt: stamp, systemFields: fields)
+
+        // Identical save: must be a complete no-op.
+        try await store.put(JournalEntry(date: "2026-08-04", content: "text", createdAt: nil, location: "Amsterdam"))
+
+        let after = try await store.get(date: "2026-08-04")
+        XCTAssertEqual(after?.modifiedAt.map(isoString), stamp, "no-op save must not bump the LWW clock")
+        let row = try await store.syncRow(date: "2026-08-04")
+        XCTAssertEqual(row?.pending, false, "no-op save must not re-mark pending")
+        let pendingAfter = try await store.pendingDates()
+        XCTAssertEqual(pendingAfter, [])
+
+        // A REAL change still writes.
+        try await store.put(JournalEntry(date: "2026-08-04", content: "text v2", createdAt: nil, location: "Amsterdam"))
+        let changed = try await store.get(date: "2026-08-04")
+        XCTAssertNotEqual(changed?.modifiedAt.map(isoString), stamp)
+        let pendingChanged = try await store.pendingDates()
+        XCTAssertEqual(pendingChanged, ["2026-08-04"])
+    }
+
     // MARK: healing invariant
 
     func testPendingDatesHealsLostPendingFlag() async throws {
