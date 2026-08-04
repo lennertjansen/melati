@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.lennertjansen
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
   developmentLanguage: en
@@ -30,6 +31,12 @@ schemes:
       config: Debug
       targets:
         - NootTests
+  NootIOS:
+    build:
+      targets:
+        NootIOS: all
+    run:
+      config: Debug
 
 packages:
   SwiftSQLCipher:
@@ -83,6 +90,48 @@ targets:
         ENABLE_PREVIEWS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
         ENABLE_HARDENED_RUNTIME: YES
+
+  NootIOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/Noot
+      - path: Sources/NootIOS
+      - path: Resources
+        excludes:
+          - "editor"
+      - path: Resources/editor
+        type: folder
+    dependencies:
+      - package: SwiftSQLCipher
+        product: SQLiteDB
+    info:
+      path: Sources/NootIOS/Info.plist
+      properties:
+        CFBundleDisplayName: Noot
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.productivity
+        UIAppFonts:
+          - Lora-Regular.ttf
+          - Lora-Italic.ttf
+          - Lora-Bold.ttf
+          - Lora-BoldItalic.ttf
+        UILaunchScreen:
+          UIColorName: Background
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lennertjansen.noot
+        PRODUCT_NAME: Noot
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
 
   # Hostless on purpose: a TEST_HOST launches the real app, which opens the
   # real diary DB and triggers keychain auth dialogs (hangs headless/CI runs).
