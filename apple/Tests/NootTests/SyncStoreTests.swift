@@ -155,6 +155,22 @@ final class SyncStoreTests: XCTestCase {
         XCTAssertEqual(actual6, ["2026-08-04"])
     }
 
+    func testRapidPutsGetStrictlyIncreasingStamps() async throws {
+        // Sub-millisecond consecutive edits must never share a stamp -
+        // equal stamps defeat the in-flight guard and LWW ordering.
+        let store = try makeStore()
+        var stamps: [Date] = []
+        for i in 0..<5 {
+            try await store.put(JournalEntry(date: "2026-08-04", content: "v\(i)", createdAt: nil, location: nil))
+            let entry = try await store.get(date: "2026-08-04")
+            stamps.append(try XCTUnwrap(entry?.modifiedAt))
+        }
+        for i in 1..<stamps.count {
+            XCTAssertGreaterThan(stamps[i], stamps[i - 1],
+                                 "stamp \(i) must be strictly greater than its predecessor")
+        }
+    }
+
     // MARK: healing invariant
 
     func testPendingDatesHealsLostPendingFlag() async throws {

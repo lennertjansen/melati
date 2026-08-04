@@ -115,8 +115,16 @@ actor JournalStore {
     func put(_ entry: JournalEntry) throws {
         let createdAtStr = entry.createdAt.map { Self.iso.string(from: $0) }
         // modified_at is store-authoritative: stamped on every write, never
-        // taken from the caller. (putFromSync differs - by design.)
-        let modifiedAtStr = Self.iso.string(from: Date())
+        // taken from the caller (putFromSync differs - by design), and
+        // strictly monotonic per entry: two edits inside the same millisecond
+        // would otherwise get equal stamps, defeating the in-flight upload
+        // guard and LWW ordering.
+        var modifiedAtStr = Self.iso.string(from: Date())
+        if let previous = try currentModifiedAt(date: entry.date),
+           modifiedAtStr <= previous,
+           let prevDate = Self.iso.date(from: previous) {
+            modifiedAtStr = Self.iso.string(from: prevDate.addingTimeInterval(0.001))
+        }
         // Data write + dirty marker commit atomically: a crash can never
         // leave a change the sync layer doesn't know about.
         try db.transaction {
@@ -315,6 +323,14 @@ actor JournalStore {
             ))
         }
         return out
+    }
+
+    private func currentModifiedAt(date: String) throws -> String? {
+        let stmt = try db.prepare("SELECT modified_at FROM entries WHERE date = ?")
+        for row in try stmt.run(date) {
+            return row[0] as? String
+        }
+        return nil
     }
 
     /// Must run inside an open transaction.
