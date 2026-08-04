@@ -136,6 +136,33 @@ struct LocationDropdownOverlay: View {
         GeometryReader { proxy in
             if let context, let filtered = filter(context), !filtered.isEmpty {
                 let frame = proxy[context.anchor]
+                #if os(iOS)
+                // Touch: full-width horizontal chip row under the header -
+                // a floating point-anchored list is a mouse idiom.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(filtered.prefix(6), id: \.self) { loc in
+                            Button {
+                                context.onSelect(loc)
+                            } label: {
+                                Text(loc)
+                                    .font(.lora(size: 13))
+                                    .foregroundStyle(Color("Foreground"))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 7)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color("ForegroundSubtle").opacity(0.10))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .frame(maxWidth: .infinity)
+                .offset(y: frame.maxY + 10)
+                #else
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(filtered.prefix(6), id: \.self) { loc in
                         Button {
@@ -164,6 +191,7 @@ struct LocationDropdownOverlay: View {
                 // Clamp so the 200pt dropdown never runs off the right edge
                 // (latent on wide mac windows, guaranteed at iPhone widths).
                 .offset(x: max(8, min(frame.minX, proxy.size.width - 200 - 8)), y: frame.maxY + 8)
+                #endif
             }
         }
         .allowsHitTesting(context != nil)

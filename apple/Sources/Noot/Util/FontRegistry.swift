@@ -6,11 +6,16 @@ enum FontRegistry {
         // Static-instance TTFs: CoreText can't ingest woff2 on iOS (and only
         // incidentally handles it on macOS). The editor embed carries its own
         // woff2 copies - WKWebView's WebContent process can't see these anyway.
+        //
+        // macOS only: on iOS the Info.plist UIAppFonts array registers these
+        // at launch; doing it here too double-registers (GSFont warnings).
+        #if os(macOS)
         let names = ["Lora-Regular", "Lora-Italic", "Lora-Bold", "Lora-BoldItalic"]
         for name in names {
             guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }
             CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }
+        #endif
     }
 }
 

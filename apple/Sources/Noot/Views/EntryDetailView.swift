@@ -30,6 +30,16 @@ struct EntryDetailView: View {
                     .keyboardShortcut(.escape, modifiers: [])
                     .accessibilityLabel(Text(String(localized: "back")))
                     Spacer()
+                    #if os(iOS)
+                    // Touch has no arrow keys: visible prev/next. Mac keeps
+                    // its keyboard-only nav (buttons below).
+                    if let onPrev {
+                        navChevron("chevron.backward", action: onPrev, label: "entry.older")
+                    }
+                    if let onNext {
+                        navChevron("chevron.forward", action: onNext, label: "entry.newer")
+                    }
+                    #endif
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
@@ -72,7 +82,39 @@ struct EntryDetailView: View {
         .task(id: dateKey) {
             await load()
         }
+        #if os(iOS)
+        // Horizontal swipe = prev/next entry; swipe right past the oldest
+        // dismisses (mirrors the reading direction of the chevrons). High
+        // priority so the read-only webview doesn't swallow the gesture.
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 40)
+                .onEnded { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                    if value.translation.width < 0 {
+                        onNext?()
+                    } else if let onPrev {
+                        onPrev()
+                    } else {
+                        onDismiss()
+                    }
+                }
+        )
+        #endif
     }
+
+    #if os(iOS)
+    private func navChevron(_ systemImage: String, action: @escaping () -> Void, label: String.LocalizationValue) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color("ForegroundSubtle"))
+                .frame(width: 32, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(String(localized: label)))
+    }
+    #endif
 
     private func load() async {
         do {

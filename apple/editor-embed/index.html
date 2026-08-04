@@ -42,6 +42,16 @@
         line-height: 1.55;
         caret-color: var(--caret);
       }
+      /* iOS (class set by editor.ts): svh tracks the software keyboard's
+         visual viewport; 70vh overshoots when the keyboard is up. Slightly
+         larger touch line-height. Mac rendering untouched. */
+      .platform-ios .ProseMirror {
+        min-height: 60svh;
+        line-height: 1.6;
+      }
+      .platform-ios #root {
+        padding: 12px 20px 72px;
+      }
       .ProseMirror p { margin: 0 0 1em; }
       .ProseMirror p.is-editor-empty:first-child::before {
         content: attr(data-placeholder);

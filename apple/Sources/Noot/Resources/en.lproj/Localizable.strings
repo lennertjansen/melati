@@ -14,3 +14,6 @@
 "cmd.newEntry" = "New Entry";
 "cmd.focusLocation" = "Edit Location";
 "menu.view" = "View";
+"editor.done" = "Done";
+"entry.older" = "Older entry";
+"entry.newer" = "Newer entry";

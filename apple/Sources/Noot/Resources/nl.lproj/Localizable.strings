@@ -14,3 +14,6 @@
 "cmd.newEntry" = "Nieuwe notitie";
 "cmd.focusLocation" = "Locatie bewerken";
 "menu.view" = "Beeld";
+"editor.done" = "Klaar";
+"entry.older" = "Oudere notitie";
+"entry.newer" = "Nieuwere notitie";

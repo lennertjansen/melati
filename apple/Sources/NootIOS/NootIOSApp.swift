@@ -20,13 +20,18 @@ struct NootIOSApp: App {
             // applicationWillTerminate): flush on every backgrounding, under a
             // background task so the write survives an immediate suspend.
             guard phase == .background else { return }
-            var taskID: UIBackgroundTaskIdentifier = .invalid
-            taskID = UIApplication.shared.beginBackgroundTask(withName: "noot.flush") {
-                UIApplication.shared.endBackgroundTask(taskID)
+            // Box avoids mutating a captured var in the Sendable expiration
+            // closure (Swift concurrency warning); the box itself is immutable.
+            final class TaskBox: @unchecked Sendable {
+                var id: UIBackgroundTaskIdentifier = .invalid
+            }
+            let box = TaskBox()
+            box.id = UIApplication.shared.beginBackgroundTask(withName: "noot.flush") {
+                UIApplication.shared.endBackgroundTask(box.id)
             }
             Task {
                 await AppEnvironment.shared.flushPending()
-                UIApplication.shared.endBackgroundTask(taskID)
+                UIApplication.shared.endBackgroundTask(box.id)
             }
         }
     }
