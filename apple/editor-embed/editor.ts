@@ -15,7 +15,16 @@ declare global {
 		nootSetReadOnly?: (ro: boolean) => void;
 		nootSetTheme?: (theme: "light" | "dark") => void;
 		nootFocus?: () => void;
+		nootExec?: (cmd: string) => void;
+		nootBlur?: () => void;
 	}
+}
+
+// Touch platforms get OS text services and their own CSS scope; on mac the
+// hardware keyboard + menu handle everything and autocorrect stays off.
+const isTouch = /iPhone|iPad|iPod/.test(navigator.userAgent);
+if (isTouch) {
+	document.documentElement.classList.add("platform-ios");
 }
 
 function post(msg: Record<string, unknown>) {
@@ -72,8 +81,8 @@ const editor = new Editor({
 	editorProps: {
 		attributes: {
 			spellcheck: "false",
-			autocorrect: "off",
-			autocapitalize: "off",
+			autocorrect: isTouch ? "on" : "off",
+			autocapitalize: isTouch ? "sentences" : "off",
 			autocomplete: "off",
 		},
 	},
@@ -81,6 +90,9 @@ const editor = new Editor({
 		const md = getMarkdown(editor);
 		post({ type: "change", md });
 		editor.commands.scrollIntoView();
+	},
+	onFocus: () => {
+		post({ type: "focus" });
 	},
 	onBlur: () => {
 		post({ type: "blur" });
@@ -112,6 +124,40 @@ window.nootSetTheme = (theme: "light" | "dark") => {
 
 window.nootFocus = () => {
 	editor.commands.focus();
+};
+
+window.nootBlur = () => {
+	editor.commands.blur();
+};
+
+// Formatting commands for the native accessory toolbar (iOS has no menu bar).
+window.nootExec = (cmd: string) => {
+	const chain = editor.chain().focus();
+	switch (cmd) {
+		case "bold":
+			chain.toggleBold().run();
+			break;
+		case "italic":
+			chain.toggleItalic().run();
+			break;
+		case "h1":
+			chain.toggleHeading({ level: 1 }).run();
+			break;
+		case "h2":
+			chain.toggleHeading({ level: 2 }).run();
+			break;
+		case "bulletList":
+			chain.toggleBulletList().run();
+			break;
+		case "orderedList":
+			chain.toggleOrderedList().run();
+			break;
+		case "blockquote":
+			chain.toggleBlockquote().run();
+			break;
+		default:
+			break;
+	}
 };
 
 post({ type: "ready" });

@@ -8,10 +8,32 @@ import UIKit
 private typealias PlatformViewRepresentable = UIViewRepresentable
 #endif
 
+/// Native handle into the webview editor: focus state for the iOS accessory
+/// toolbar, formatting commands for its buttons. Inert on macOS (menu bar +
+/// keyboard shortcuts cover formatting there).
+@MainActor
+@Observable
+final class EditorController {
+    var isFocused = false
+    weak var webView: WKWebView?
+
+    func exec(_ command: String) {
+        webView?.evaluateJavaScript("window.nootExec && window.nootExec('\(command)')", completionHandler: nil)
+    }
+
+    func done() {
+        webView?.evaluateJavaScript("window.nootBlur && window.nootBlur()", completionHandler: nil)
+        #if os(iOS)
+        webView?.endEditing(true)
+        #endif
+    }
+}
+
 struct MarkdownEditor: PlatformViewRepresentable {
     @Binding var text: String
     var readOnly: Bool = false
     var colorScheme: ColorScheme = .light
+    var controller: EditorController? = nil
     var onTextChange: (() -> Void)?
     var onBlur: (() -> Void)?
 
@@ -52,6 +74,7 @@ struct MarkdownEditor: PlatformViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         context.coordinator.webView = webView
+        controller?.webView = webView
 
         if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "editor")
             ?? Bundle.main.url(forResource: "editor/index", withExtension: "html") {
@@ -94,8 +117,13 @@ struct MarkdownEditor: PlatformViewRepresentable {
                         parent.onTextChange?()
                     }
                 }
+            case "focus":
+                Task { @MainActor in parent.controller?.isFocused = true }
             case "blur":
-                Task { @MainActor in parent.onBlur?() }
+                Task { @MainActor in
+                    parent.controller?.isFocused = false
+                    parent.onBlur?()
+                }
             case "error":
                 _log("[noot.editor.error] %@:%@:%@ — %@", String(describing: body["source"] ?? ""), String(describing: body["line"] ?? ""), String(describing: body["col"] ?? ""), String(describing: body["message"] ?? ""))
             case "log":

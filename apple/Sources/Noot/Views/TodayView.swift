@@ -11,6 +11,7 @@ struct TodayView: View {
     @State private var saveTask: Task<Void, Never>?
     @State private var dateKey: String = DateUtil.todayKey()
     @State private var recentLocations: [String] = []
+    @State private var editorController = EditorController()
 
     var body: some View {
         ZStack {
@@ -35,12 +36,14 @@ struct TodayView: View {
                     text: $content,
                     readOnly: false,
                     colorScheme: colorScheme,
+                    controller: editorController,
                     onTextChange: { scheduleAutosave() },
                     onBlur: { Task { await save() } }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .editorAccessoryBar(editorController)
         .overlayPreferenceValue(LocationDropdownContextKey.self) { context in
             LocationDropdownOverlay(context: context)
         }
