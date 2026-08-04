@@ -36,6 +36,33 @@ jobs:
             CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
             test | tail -100
 
+  ios:
+    name: iOS build (simulator)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: spm-ios-${{ runner.os }}-${{ hashFiles('apple/project.yml') }}
+          restore-keys: spm-ios-${{ runner.os }}-
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        working-directory: apple
+        run: xcodegen
+
+      - name: Build for iOS Simulator
+        working-directory: apple
+        run: |
+          xcodebuild -project Noot.xcodeproj -scheme NootIOS \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -50
+
   lint:
     name: Lint + editor embed build
     runs-on: ubuntu-latest
