@@ -1,6 +1,6 @@
 # 🌰 Noot
 
-Private daily journaling for macOS.
+Private daily journaling for macOS and iOS.
 
 Native SwiftUI app. SQLCipher-encrypted entries with the key in Keychain. The TipTap editor is bundled as a single-file HTML page (`apple/editor-embed`) and hosted in a `WKWebView`.
 
