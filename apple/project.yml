@@ -78,9 +78,14 @@ targets:
         # Required for WKWebView's WebContent process to initialize, even when
         # only loading file:// URLs from the bundle. WebKit's helper processes
         # need network.client to start; without it WebContent crashes on launch.
-        # We do NOT make any network calls — the bundled editor only imports
-        # TipTap and reads/writes markdown via the JS bridge.
+        # network.client also carries CloudKit sync traffic now.
         com.apple.security.network.client: true
+        # CloudKit sync (phase D). No push entitlement on mac dev builds:
+        # CKSyncEngine's own scheduling + fetch-on-active cover it, and mac
+        # push needs Developer ID provisioning (distribution-phase problem).
+        com.apple.developer.icloud-services: [CloudKit]
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.lennertjansen.noot
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lennertjansen.noot
@@ -97,6 +102,9 @@ targets:
     sources:
       - path: Sources/Noot
       - path: Sources/NootIOS
+        excludes:
+          - "Info.plist"
+          - "NootIOS.entitlements"
       - path: Resources
         excludes:
           - "editor"
@@ -122,6 +130,17 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes:
+          - remote-notification
+    entitlements:
+      path: Sources/NootIOS/NootIOS.entitlements
+      properties:
+        com.apple.developer.icloud-services: [CloudKit]
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.lennertjansen.noot
+        # CKSyncEngine registers its own CKDatabaseSubscription; this lets
+        # the resulting silent pushes wake the app.
+        aps-environment: development
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lennertjansen.noot

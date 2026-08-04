@@ -16,6 +16,10 @@ struct NootIOSApp: App {
                 .environment(AppEnvironment.shared)
         }
         .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                AppEnvironment.shared.startSyncIfAvailable()
+                AppEnvironment.shared.syncFetchNow()
+            }
             // iOS has no reliable terminate hook (mac uses
             // applicationWillTerminate): flush on every backgrounding, under a
             // background task so the write survives an immediate suspend.

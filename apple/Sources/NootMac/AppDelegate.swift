@@ -7,6 +7,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 window.setFrameAutosaveName("NootMain")
             }
         }
+        Task { @MainActor in
+            AppEnvironment.shared.startSyncIfAvailable()
+        }
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        // Foreground fetch: mac dev builds have no push, this is the backstop.
+        Task { @MainActor in
+            AppEnvironment.shared.syncFetchNow()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

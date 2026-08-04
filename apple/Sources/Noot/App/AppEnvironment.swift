@@ -8,6 +8,7 @@ final class AppEnvironment {
 
     let store: JournalStore
     var pendingEntry: JournalEntry?
+    private(set) var sync: CloudSyncService?
 
     private init() {
         do {
@@ -17,6 +18,29 @@ final class AppEnvironment {
         } catch {
             fatalError("Noot failed to initialize encrypted storage: \(error)")
         }
+    }
+
+    /// Async on purpose - init is synchronous and fatalError-happy; sync
+    /// setup must never block or kill launch. No-ops without an iCloud
+    /// account (app stays fully local) or when the kill switch is off.
+    func startSyncIfAvailable() {
+        guard SyncSettings.isEnabled, sync == nil else { return }
+        Task {
+            guard await CloudSyncService.accountAvailable() else {
+                print("[noot.sync] no iCloud account - staying local")
+                return
+            }
+            let service = CloudSyncService(store: store)
+            sync = service
+            await service.start()
+            await service.fetchNow()
+        }
+    }
+
+    /// Foreground fetch backstop; safe to call any time.
+    func syncFetchNow() {
+        guard let sync else { return }
+        Task { await sync.fetchNow() }
     }
 
     func flushPending() async {
