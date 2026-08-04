@@ -3,9 +3,12 @@ import SwiftUI
 
 enum FontRegistry {
     static func registerBundledFonts() {
-        let names = ["Lora-Regular", "Lora-Italic", "Lora-Bold"]
+        // Static-instance TTFs: CoreText can't ingest woff2 on iOS (and only
+        // incidentally handles it on macOS). The editor embed carries its own
+        // woff2 copies - WKWebView's WebContent process can't see these anyway.
+        let names = ["Lora-Regular", "Lora-Italic", "Lora-Bold", "Lora-BoldItalic"]
         for name in names {
-            guard let url = Bundle.main.url(forResource: name, withExtension: "woff2") else { continue }
+            guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }
             CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }
     }
