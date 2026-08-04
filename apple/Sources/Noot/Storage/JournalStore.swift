@@ -114,13 +114,22 @@ actor JournalStore {
 
     func put(_ entry: JournalEntry) throws {
         let createdAtStr = entry.createdAt.map { Self.iso.string(from: $0) }
+        // A save that changes nothing must not count as a write. The UI saves
+        // on every blur/tab-flip/refocus; if those bumped modified_at, the
+        // device with the entry ON SCREEN would forever win LWW and remote
+        // edits could never land (found the hard way in two-device testing).
+        if let current = try currentRow(date: entry.date),
+           current.content == entry.content,
+           current.location == entry.location {
+            return
+        }
         // modified_at is store-authoritative: stamped on every write, never
         // taken from the caller (putFromSync differs - by design), and
         // strictly monotonic per entry: two edits inside the same millisecond
         // would otherwise get equal stamps, defeating the in-flight upload
         // guard and LWW ordering.
         var modifiedAtStr = Self.iso.string(from: Date())
-        if let previous = try currentModifiedAt(date: entry.date),
+        if let previous = try currentRow(date: entry.date)?.modifiedAt,
            modifiedAtStr <= previous,
            let prevDate = Self.iso.date(from: previous) {
             modifiedAtStr = Self.iso.string(from: prevDate.addingTimeInterval(0.001))
@@ -325,10 +334,10 @@ actor JournalStore {
         return out
     }
 
-    private func currentModifiedAt(date: String) throws -> String? {
-        let stmt = try db.prepare("SELECT modified_at FROM entries WHERE date = ?")
+    private func currentRow(date: String) throws -> (content: String, location: String?, modifiedAt: String?)? {
+        let stmt = try db.prepare("SELECT content, location, modified_at FROM entries WHERE date = ?")
         for row in try stmt.run(date) {
-            return row[0] as? String
+            return (row[0] as? String ?? "", row[1] as? String, row[2] as? String)
         }
         return nil
     }
