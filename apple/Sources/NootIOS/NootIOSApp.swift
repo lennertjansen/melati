@@ -8,6 +8,9 @@ struct NootIOSApp: App {
     init() {
         FontRegistry.registerBundledFonts()
         _ = AppEnvironment.shared
+        #if DEBUG
+        DebugSeed.demoBackupsIfRequested()
+        #endif
     }
 
     var body: some Scene {

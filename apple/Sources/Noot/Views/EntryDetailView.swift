@@ -13,6 +13,8 @@ struct EntryDetailView: View {
     @State private var createdAt: Date?
     @State private var location: String?
     @State private var loaded: Bool = false
+    @State private var backupCount: Int = 0
+    @State private var showBackups: Bool = false
 
     var body: some View {
         ZStack {
@@ -40,6 +42,17 @@ struct EntryDetailView: View {
                         navChevron("chevron.forward", action: onNext, label: "entry.newer")
                     }
                     #endif
+                    if backupCount > 0 {
+                        Button(action: { showBackups = true }) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(Color("ForegroundSubtle"))
+                                .frame(width: 32, height: 28)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(Text(String(localized: "backups.title")))
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
@@ -81,6 +94,13 @@ struct EntryDetailView: View {
         )
         .task(id: dateKey) {
             await load()
+        }
+        .sheet(isPresented: $showBackups) {
+            ConflictBackupsView(dateKey: dateKey, onDismiss: { showBackups = false })
+                .environment(env)
+                #if os(macOS)
+                .frame(minWidth: 480, minHeight: 420)
+                #endif
         }
         .onReceive(NotificationCenter.default.publisher(for: .nootEntriesChangedRemotely)) { note in
             // Read-only view: refreshing can never stomp anything.
@@ -128,6 +148,7 @@ struct EntryDetailView: View {
                 createdAt = entry.createdAt
                 location = entry.location
             }
+            backupCount = ((try? await env.store.conflictBackups(for: dateKey)) ?? []).count
         } catch {
             print("EntryDetailView load failed: \(error)")
         }

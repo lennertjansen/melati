@@ -22,3 +22,6 @@
 "sync.syncing" = "Synchroniseren…";
 "sync.error" = "Syncfout";
 "sync.quota" = "iCloud-opslag vol";
+"backups.title" = "Reservekopieën";
+"backups.reason.lwwRemoteWon" = "Vervangen door een nieuwere versie van een ander apparaat";
+"backups.reason.remoteDelete" = "Verwijderd door een ander apparaat";

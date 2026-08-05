@@ -67,6 +67,22 @@ enum DateUtil {
         return fmt.string(from: date)
     }
 
+    /// ISO8601 sync stamp (with or without fractional seconds) -> localized
+    /// "date at time". Falls back to the raw string on parse failure rather
+    /// than hiding a backup behind an empty label.
+    static func formatSyncTimestamp(_ iso: String) -> String {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        guard let date = fractional.date(from: iso) ?? plain.date(from: iso) else { return iso }
+        let fmt = DateFormatter()
+        fmt.locale = .current
+        fmt.dateStyle = .medium
+        fmt.timeStyle = .short
+        return fmt.string(from: date)
+    }
+
     struct MonthDay: Identifiable, Equatable {
         let date: Date
         let dateKey: String

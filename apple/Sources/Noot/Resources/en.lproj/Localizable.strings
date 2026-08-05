@@ -22,3 +22,6 @@
 "sync.syncing" = "Syncing…";
 "sync.error" = "Sync error";
 "sync.quota" = "iCloud storage full";
+"backups.title" = "Backups";
+"backups.reason.lwwRemoteWon" = "Replaced by a newer version from another device";
+"backups.reason.remoteDelete" = "Removed by another device";

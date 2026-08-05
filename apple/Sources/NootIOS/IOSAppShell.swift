@@ -5,16 +5,29 @@ struct IOSAppShell: View {
     @State private var selection: NavTab = .today
     @State private var selectedDate: String? = nil
     @State private var entryDates: [String] = []
+    #if DEBUG
+    // Verification-only: renders ConflictBackupsView directly (no tap path
+    // exists for screenshot tooling). Set via `-noot.showBackups <dateKey>`.
+    @State private var debugBackupsDate: String? = nil
+    #endif
 
     init() {
-        // Verification hook: `simctl launch ... -noot.initialTab entries`
-        // (launch arguments land in UserDefaults). Screenshot tooling has no
-        // way to tap the simulator; real launches always start on Today.
+        // Verification hooks: `simctl launch ... -noot.initialTab entries`
+        // / `-noot.openDate 2026-08-05` (launch arguments land in
+        // UserDefaults). Screenshot tooling has no way to tap the simulator;
+        // real launches always start on Today with nothing selected.
         switch UserDefaults.standard.string(forKey: "noot.initialTab") {
         case "entries": _selection = State(initialValue: .entries)
         case "calendar": _selection = State(initialValue: .calendar)
         default: break
         }
+        if let date = UserDefaults.standard.string(forKey: "noot.openDate") {
+            _selection = State(initialValue: .entries)
+            _selectedDate = State(initialValue: date)
+        }
+        #if DEBUG
+        _debugBackupsDate = State(initialValue: UserDefaults.standard.string(forKey: "noot.showBackups"))
+        #endif
     }
 
     var body: some View {
@@ -60,6 +73,14 @@ struct IOSAppShell: View {
                 selection = tab
             }
         }
+        #if DEBUG
+        .overlay {
+            if let date = debugBackupsDate {
+                ConflictBackupsView(dateKey: date, onDismiss: { debugBackupsDate = nil })
+                    .background(Color("Background").ignoresSafeArea())
+            }
+        }
+        #endif
     }
 
     // Same detail model as the mac shell: a selected date replaces the tab's
