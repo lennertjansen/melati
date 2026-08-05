@@ -151,8 +151,14 @@ final class JournalStoreTests: XCTestCase {
 final class KeyStoreTests: XCTestCase {
     private var keyStore: KeyStore!
 
-    override func setUp() {
-        super.setUp()
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        #if os(iOS)
+        // Hostless iOS test bundles get no keychain entitlement (-34018);
+        // macOS covers this code path in CI, and iOS keychain behavior was
+        // verified on hardware (C1: persistence through force-quit).
+        throw XCTSkip("keychain unavailable in hostless iOS test bundle")
+        #endif
         keyStore = KeyStore(
             service: "com.lennertjansen.noot.tests",
             account: "test-key-\(UUID().uuidString)"
@@ -160,7 +166,7 @@ final class KeyStoreTests: XCTestCase {
     }
 
     override func tearDown() {
-        keyStore.deleteAll()
+        keyStore?.deleteAll()
         super.tearDown()
     }
 
