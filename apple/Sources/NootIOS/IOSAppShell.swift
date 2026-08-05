@@ -6,6 +6,17 @@ struct IOSAppShell: View {
     @State private var selectedDate: String? = nil
     @State private var entryDates: [String] = []
 
+    init() {
+        // Verification hook: `simctl launch ... -noot.initialTab entries`
+        // (launch arguments land in UserDefaults). Screenshot tooling has no
+        // way to tap the simulator; real launches always start on Today.
+        switch UserDefaults.standard.string(forKey: "noot.initialTab") {
+        case "entries": _selection = State(initialValue: .entries)
+        case "calendar": _selection = State(initialValue: .calendar)
+        default: break
+        }
+    }
+
     var body: some View {
         TabView(selection: $selection) {
             NavigationStack {

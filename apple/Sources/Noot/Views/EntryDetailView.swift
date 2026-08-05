@@ -82,6 +82,11 @@ struct EntryDetailView: View {
         .task(id: dateKey) {
             await load()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .nootEntriesChangedRemotely)) { note in
+            // Read-only view: refreshing can never stomp anything.
+            guard let dates = note.userInfo?["dates"] as? Set<String>, dates.contains(dateKey) else { return }
+            Task { await load() }
+        }
         #if os(iOS)
         // Horizontal swipe = prev/next entry; swipe right past the oldest
         // dismisses (mirrors the reading direction of the chevrons). High

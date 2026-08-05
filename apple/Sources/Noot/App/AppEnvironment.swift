@@ -9,6 +9,8 @@ final class AppEnvironment {
     let store: JournalStore
     var pendingEntry: JournalEntry?
     private(set) var sync: CloudSyncService?
+    /// Quiet UI surface: .off until sync starts (kill switch / no account).
+    private(set) var syncStatus: SyncStatus = .off
 
     private init() {
         do {
@@ -30,7 +32,9 @@ final class AppEnvironment {
                 print("[noot.sync] no iCloud account - staying local")
                 return
             }
-            let service = CloudSyncService(store: store)
+            let service = CloudSyncService(store: store) { [weak self] status in
+                self?.syncStatus = status
+            }
             sync = service
             await service.start()
             await service.fetchNow()

@@ -12,6 +12,11 @@ struct TodayView: View {
     @State private var dateKey: String = DateUtil.todayKey()
     @State private var recentLocations: [String] = []
     @State private var editorController = EditorController()
+    // What the store last held for this entry: the buffer is "clean" when it
+    // matches, and only a clean buffer may be refreshed by a remote change.
+    @State private var persistedContent: String = ""
+    @State private var persistedLocation: String?
+    @State private var remoteUpdateNotice: Bool = false
 
     var body: some View {
         ZStack {
@@ -32,6 +37,13 @@ struct TodayView: View {
                 )
                 .padding(.top, 24)
                 .padding(.bottom, 8)
+                if remoteUpdateNotice {
+                    Text(String(localized: "today.remoteUpdate"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color("ForegroundSubtle"))
+                        .padding(.bottom, 6)
+                        .transition(.opacity)
+                }
                 MarkdownEditor(
                     text: $content,
                     readOnly: false,
@@ -53,6 +65,10 @@ struct TodayView: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
             Task { await rollOverToToday() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .nootEntriesChangedRemotely)) { note in
+            guard let dates = note.userInfo?["dates"] as? Set<String>, dates.contains(dateKey) else { return }
+            Task { await applyRemoteChange() }
+        }
         .onDisappear {
             saveTask?.cancel()
             Task { await save() }
@@ -67,7 +83,35 @@ struct TodayView: View {
         content = ""
         existingCreatedAt = nil
         existingLocation = nil
+        remoteUpdateNotice = false
         await load()
+    }
+
+    /// A remote change for today already landed in the store (LWW decided it
+    /// wins over what was persisted). A clean editor refreshes silently; a
+    /// dirty one is never stomped - the pending autosave carries a newer
+    /// stamp and wins everywhere, so just show the passive notice.
+    private func applyRemoteChange() async {
+        guard loaded else { return }
+        guard let fresh = try? await env.store.get(date: dateKey) else { return }
+        switch RemoteUpdatePolicy.action(
+            bufferContent: content,
+            bufferLocation: existingLocation,
+            persistedContent: persistedContent,
+            persistedLocation: persistedLocation
+        ) {
+        case .refresh:
+            content = fresh.content
+            existingCreatedAt = fresh.createdAt
+            existingLocation = fresh.location
+            persistedContent = fresh.content
+            persistedLocation = fresh.location
+            remoteUpdateNotice = false
+        case .notice:
+            persistedContent = fresh.content
+            persistedLocation = fresh.location
+            withAnimation { remoteUpdateNotice = true }
+        }
     }
 
     private func load() async {
@@ -78,6 +122,11 @@ struct TodayView: View {
                 content = existing.content
                 existingCreatedAt = existing.createdAt
                 existingLocation = existing.location
+                persistedContent = existing.content
+                persistedLocation = existing.location
+            } else {
+                persistedContent = ""
+                persistedLocation = nil
             }
             recentLocations = (try? await env.store.loadRecentLocations()) ?? []
         } catch {
@@ -120,6 +169,8 @@ struct TodayView: View {
         let entry = currentEntry()
         do {
             try await env.store.put(entry)
+            persistedContent = entry.content
+            persistedLocation = entry.location
             if env.pendingEntry?.date == entry.date && env.pendingEntry?.content == entry.content {
                 env.pendingEntry = nil
             }
