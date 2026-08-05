@@ -17,3 +17,7 @@
 "editor.done" = "Done";
 "entry.older" = "Older entry";
 "entry.newer" = "Newer entry";
+"today.remoteUpdate" = "Updated on another device";
+"sync.off" = "Sync off";
+"sync.syncing" = "Syncing…";
+"sync.error" = "Sync error";

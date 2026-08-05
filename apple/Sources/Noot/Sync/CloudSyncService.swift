@@ -29,14 +29,18 @@ actor CloudSyncService {
     }
 
     private let store: JournalStore
+    private let onStatus: @MainActor (SyncStatus) -> Void
     private var engine: CKSyncEngine?
     private var changesTask: Task<Void, Never>?
+    private var activity = SyncActivity()
+    private var lastPublishedStatus: SyncStatus?
 
     private static let engineStateKey = "engine_state"
     private static let zoneCreatedKey = "zone_created"
 
-    init(store: JournalStore) {
+    init(store: JournalStore, onStatus: @escaping @MainActor (SyncStatus) -> Void = { _ in }) {
         self.store = store
+        self.onStatus = onStatus
     }
 
     // MARK: - Lifecycle
@@ -79,6 +83,7 @@ actor CloudSyncService {
             }
         }
         log("sync engine started")
+        publishStatus()
     }
 
     func stop() {
@@ -94,9 +99,12 @@ actor CloudSyncService {
         guard let engine else { return }
         do {
             try await engine.fetchChanges()
+            activity.noteSuccess()
         } catch {
             log("fetchChanges failed: \(error)")
+            activity.noteError("fetch failed")
         }
+        publishStatus()
     }
 
     private func noteLocalChange(_ change: LocalChange) {
@@ -105,6 +113,14 @@ actor CloudSyncService {
         case .entryChanged(let date):
             engine.state.add(pendingRecordZoneChanges: [.saveRecord(SyncSchema.recordID(dateKey: date))])
         }
+    }
+
+    private func publishStatus() {
+        let status = activity.status
+        guard status != lastPublishedStatus else { return }
+        lastPublishedStatus = status
+        let callback = onStatus
+        Task { @MainActor in callback(status) }
     }
 
     private func log(_ message: String) {
@@ -142,8 +158,15 @@ extension CloudSyncService: CKSyncEngineDelegate {
                 log("zone deleted remotely - local data kept, sync paused until reset")
             }
 
-        case .willFetchChanges, .didFetchChanges, .willSendChanges, .didSendChanges,
-             .willFetchRecordZoneChanges, .didFetchRecordZoneChanges:
+        case .willFetchChanges, .willSendChanges:
+            activity.begin()
+            publishStatus()
+
+        case .didFetchChanges, .didSendChanges:
+            activity.end()
+            publishStatus()
+
+        case .willFetchRecordZoneChanges, .didFetchRecordZoneChanges:
             break
 
         @unknown default:
@@ -240,6 +263,10 @@ extension CloudSyncService: CKSyncEngineDelegate {
     // MARK: - Sent changes <- server verdicts
 
     private func handleSentChanges(_ sent: CKSyncEngine.Event.SentRecordZoneChanges) async {
+        if !sent.savedRecords.isEmpty && sent.failedRecordSaves.isEmpty {
+            activity.noteSuccess()
+            publishStatus()
+        }
         for saved in sent.savedRecords {
             guard let remote = JournalRecordCoder.decode(saved) else { continue }
             try? await store.markUploaded(
@@ -263,8 +290,10 @@ extension CloudSyncService: CKSyncEngineDelegate {
                 engine?.state.add(pendingRecordZoneChanges: [.saveRecord(failure.record.recordID)])
             default:
                 // Quota, network, throttling: keep pending; the engine retries
-                // with its own backoff. D5 surfaces status to the UI.
+                // with its own backoff. D5 refines per-cause handling (quota).
                 log("save failed (\(date)): \(ckError.code) - will retry")
+                activity.noteError("upload failed")
+                publishStatus()
             }
         }
     }

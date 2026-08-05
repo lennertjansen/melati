@@ -38,6 +38,9 @@ struct EntriesListView: View {
         .task {
             await load()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .nootEntriesChangedRemotely)) { _ in
+            Task { await load() }
+        }
     }
 
     private var toolbar: some View {
@@ -52,6 +55,7 @@ struct EntriesListView: View {
             .pickerStyle(.segmented)
             .frame(width: 200)
             Spacer()
+            SyncStatusLine(status: env.syncStatus)
         }
     }
 

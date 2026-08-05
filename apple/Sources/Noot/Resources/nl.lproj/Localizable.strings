@@ -17,3 +17,7 @@
 "editor.done" = "Klaar";
 "entry.older" = "Oudere notitie";
 "entry.newer" = "Nieuwere notitie";
+"today.remoteUpdate" = "Bijgewerkt op een ander apparaat";
+"sync.off" = "Sync uit";
+"sync.syncing" = "Synchroniseren…";
+"sync.error" = "Syncfout";

@@ -31,6 +31,9 @@ struct CalendarView: View {
         .task {
             await load()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .nootEntriesChangedRemotely)) { _ in
+            Task { await load() }
+        }
     }
 
     private var monthNav: some View {
