@@ -39,18 +39,26 @@ final class SyncActivityTests: XCTestCase {
     func testErrorSticksAfterOperationsEnd() {
         var a = SyncActivity()
         a.begin()
-        a.noteError("upload failed")
+        a.noteError(.uploadFailed)
         // In-flight wins the display while the retry runs...
         XCTAssertEqual(a.status, .syncing)
         a.end()
         // ...and the error shows once nothing is in flight.
-        XCTAssertEqual(a.status, .error("upload failed"))
+        XCTAssertEqual(a.status, .error(.uploadFailed))
     }
 
     func testSuccessClearsError() {
         var a = SyncActivity()
-        a.noteError("fetch failed")
-        XCTAssertEqual(a.status, .error("fetch failed"))
+        a.noteError(.fetchFailed)
+        XCTAssertEqual(a.status, .error(.fetchFailed))
+        a.noteSuccess()
+        XCTAssertEqual(a.status, .idle)
+    }
+
+    func testQuotaClearsWhenLaterUploadSucceeds() {
+        var a = SyncActivity()
+        a.noteError(.quotaFull)
+        XCTAssertEqual(a.status, .error(.quotaFull))
         a.noteSuccess()
         XCTAssertEqual(a.status, .idle)
     }

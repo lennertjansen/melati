@@ -21,6 +21,8 @@ struct SyncStatusLine: View {
             return String(localized: "sync.off")
         case .syncing:
             return String(localized: "sync.syncing")
+        case .error(.quotaFull):
+            return String(localized: "sync.quota")
         case .error:
             return String(localized: "sync.error")
         }

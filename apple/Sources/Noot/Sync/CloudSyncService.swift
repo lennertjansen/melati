@@ -102,7 +102,11 @@ actor CloudSyncService {
             activity.noteSuccess()
         } catch {
             log("fetchChanges failed: \(error)")
-            activity.noteError("fetch failed")
+            if let ck = error as? CKError, SyncEdgePolicy.fetchFailureIsQuiet(ck.code) {
+                // Offline/throttled is a normal state, not an error line.
+            } else {
+                activity.noteError(.fetchFailed)
+            }
         }
         publishStatus()
     }
@@ -116,7 +120,10 @@ actor CloudSyncService {
     }
 
     private func publishStatus() {
-        let status = activity.status
+        publish(activity.status)
+    }
+
+    private func publish(_ status: SyncStatus) {
         guard status != lastPublishedStatus else { return }
         lastPublishedStatus = status
         let callback = onStatus
@@ -148,14 +155,11 @@ extension CloudSyncService: CKSyncEngineDelegate {
             try? await store.setSyncMeta(key: Self.zoneCreatedKey, value: Data([1]))
 
         case .accountChange(let change):
-            // D5 hardens this (reset + merge on switch). For now: log loudly.
-            log("account change: \(change.changeType)")
+            await handleAccountChange(change.changeType)
 
         case .fetchedDatabaseChanges(let changes):
             for deletion in changes.deletions where deletion.zoneID == SyncSchema.zoneID {
-                // Zone deleted from another device/dashboard. D5 re-uploads;
-                // for now log - local data is untouched by design.
-                log("zone deleted remotely - local data kept, sync paused until reset")
+                await handleZoneDeleted()
             }
 
         case .willFetchChanges, .willSendChanges:
@@ -260,6 +264,54 @@ extension CloudSyncService: CKSyncEngineDelegate {
         }
     }
 
+    // MARK: - Edge states (D5)
+
+    /// The journal is NEVER purged on account changes. Reset forgets server
+    /// associations and marks everything pending; the rebuilt engine uploads
+    /// all local entries and fetches the account's records - LWW merges.
+    private func handleAccountChange(_ changeType: CKSyncEngine.Event.AccountChange.ChangeType) async {
+        let event: AccountEvent
+        switch changeType {
+        case .signIn: event = .signIn
+        case .signOut: event = .signOut
+        case .switchAccounts: event = .switchAccounts
+        @unknown default:
+            log("unhandled account change: \(changeType)")
+            return
+        }
+        log("account change: \(event)")
+
+        let plan = SyncEdgePolicy.plan(for: event)
+        // Drop the old engine before touching state so nothing uploads
+        // against the previous account mid-reset.
+        changesTask?.cancel()
+        changesTask = nil
+        engine = nil
+        activity = SyncActivity()
+
+        if plan.resetSyncState {
+            try? await store.resetSyncState()
+        }
+        if plan.restartEngine {
+            await start()
+            await fetchNow()
+        }
+        if let status = plan.statusWhenDone {
+            publish(status)
+        }
+    }
+
+    /// Zone deleted from another device or the dashboard. Local data is the
+    /// source of truth: recreate the zone and re-upload everything.
+    private func handleZoneDeleted() async {
+        log("zone deleted remotely - recreating zone, re-uploading all entries")
+        try? await store.resetSyncState()
+        engine?.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: SyncSchema.zoneID))])
+        if let pending = try? await store.pendingDates(), !pending.isEmpty {
+            engine?.state.add(pendingRecordZoneChanges: pending.map { .saveRecord(SyncSchema.recordID(dateKey: $0)) })
+        }
+    }
+
     // MARK: - Sent changes <- server verdicts
 
     private func handleSentChanges(_ sent: CKSyncEngine.Event.SentRecordZoneChanges) async {
@@ -282,17 +334,21 @@ extension CloudSyncService: CKSyncEngineDelegate {
                 log("save failed (\(date)): \(failure.error)")
                 continue
             }
-            switch ckError.code {
-            case .serverRecordChanged:
+            switch SyncEdgePolicy.uploadFailureAction(for: ckError.code) {
+            case .resolveConflict:
                 await resolveUploadConflict(date: date, serverRecord: ckError.serverRecord)
-            case .zoneNotFound, .userDeletedZone:
+            case .recreateZone:
                 engine?.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: SyncSchema.zoneID))])
                 engine?.state.add(pendingRecordZoneChanges: [.saveRecord(failure.record.recordID)])
-            default:
-                // Quota, network, throttling: keep pending; the engine retries
-                // with its own backoff. D5 refines per-cause handling (quota).
+            case .quotaFull:
+                log("save failed (\(date)): iCloud quota full - keeping pending")
+                activity.noteError(.quotaFull)
+                publishStatus()
+            case .retryQuietly:
+                log("save failed (\(date)): \(ckError.code) - engine retries")
+            case .retryShowError:
                 log("save failed (\(date)): \(ckError.code) - will retry")
-                activity.noteError("upload failed")
+                activity.noteError(.uploadFailed)
                 publishStatus()
             }
         }
