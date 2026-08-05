@@ -24,4 +24,4 @@ Shortcuts: ⌘N new entry · ⌘1/⌘2/⌘3 today/entries/calendar · ←/→ fl
 
 ## Privacy
 
-No network, no analytics, no accounts. Entries are SQLCipher-encrypted on disk.
+No accounts, no analytics. Entries are SQLCipher-encrypted on disk. Sync goes only through your own iCloud, which the developer cannot access.
