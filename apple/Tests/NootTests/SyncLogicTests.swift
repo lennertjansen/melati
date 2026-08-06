@@ -6,71 +6,157 @@ final class SyncReconcilerTests: XCTestCase {
         RemoteEntry(date: "2026-08-04", content: content, createdAt: nil, location: nil, modifiedAt: modifiedAt)
     }
 
-    // MARK: resolveFetch matrix
+    /// Convenience: containment flags computed from real contents, the way
+    /// CloudSyncService computes them.
+    private func fetch(
+        local: String?, base: String?, localContent: String = "l",
+        localLocation: String? = nil, remote r: RemoteEntry
+    ) -> FetchResolution {
+        SyncReconciler.resolveFetch(
+            localModifiedAt: local,
+            lastSyncedModifiedAt: base,
+            localEqualsRemote: local != nil && localContent == r.content && localLocation == r.location,
+            localContainsRemote: EntryMerge.contains(local == nil ? "" : localContent, r.content),
+            remoteContainsLocal: EntryMerge.contains(r.content, local == nil ? "" : localContent),
+            remote: r
+        )
+    }
+
+    // MARK: resolveFetch - no local / equality
 
     func testFetchNoLocalRowAppliesRemote() {
-        let r = SyncReconciler.resolveFetch(
-            localModifiedAt: nil, localContentEqualsRemote: false,
-            remote: remote("2026-08-04T10:00:00.000Z"))
+        let r = fetch(local: nil, base: nil, remote: remote("2026-08-04T10:00:00.000Z"))
         XCTAssertEqual(r, .applyRemote)
-    }
-
-    func testFetchRemoteNewerAppliesRemote() {
-        let r = SyncReconciler.resolveFetch(
-            localModifiedAt: "2026-08-04T09:00:00.000Z", localContentEqualsRemote: false,
-            remote: remote("2026-08-04T10:00:00.000Z"))
-        XCTAssertEqual(r, .applyRemote)
-    }
-
-    func testFetchLocalNewerKeepsLocalStoresTag() {
-        let r = SyncReconciler.resolveFetch(
-            localModifiedAt: "2026-08-04T11:00:00.000Z", localContentEqualsRemote: false,
-            remote: remote("2026-08-04T10:00:00.000Z"))
-        XCTAssertEqual(r, .keepLocalStoreTag)
     }
 
     func testFetchEqualStampSameContentIsIdentical() {
-        let r = SyncReconciler.resolveFetch(
-            localModifiedAt: "2026-08-04T10:00:00.000Z", localContentEqualsRemote: true,
-            remote: remote("2026-08-04T10:00:00.000Z"))
+        let r = fetch(local: "2026-08-04T10:00:00.000Z", base: nil, localContent: "same",
+                      remote: remote("2026-08-04T10:00:00.000Z", content: "same"))
         XCTAssertEqual(r, .identical)
     }
 
-    func testFetchEqualStampDifferentContentPrefersServer() {
-        // Clock pathology: deterministic server preference converges both sides.
-        let r = SyncReconciler.resolveFetch(
-            localModifiedAt: "2026-08-04T10:00:00.000Z", localContentEqualsRemote: false,
-            remote: remote("2026-08-04T10:00:00.000Z"))
+    func testFetchSameContentNewerStampAdoptsRemoteClock() {
+        let r = fetch(local: "2026-08-04T09:00:00.000Z", base: nil, localContent: "same",
+                      remote: remote("2026-08-04T10:00:00.000Z", content: "same"))
         XCTAssertEqual(r, .applyRemote)
     }
 
-    // MARK: resolveConflict matrix
+    // MARK: resolveFetch - fast-forward (no local edits since last sync)
 
-    func testConflictLocalNewerWinsReupload() {
-        let r = SyncReconciler.resolveConflict(
-            localModifiedAt: "2026-08-04T11:00:00.000Z", localContentEqualsServer: false,
-            server: remote("2026-08-04T10:00:00.000Z"))
+    func testFastForwardAppliesNewerRemote() {
+        // The normal propagation case: deletions and rewrites apply verbatim.
+        let r = fetch(local: "2026-08-04T09:00:00.000Z", base: "2026-08-04T09:00:00.000Z",
+                      localContent: "old text", remote: remote("2026-08-04T10:00:00.000Z", content: "rewritten"))
+        XCTAssertEqual(r, .applyRemote)
+    }
+
+    func testFastForwardEqualStampDifferentContentPrefersServer() {
+        // Clock pathology: deterministic server preference converges both sides.
+        let r = fetch(local: "2026-08-04T10:00:00.000Z", base: "2026-08-04T10:00:00.000Z",
+                      remote: remote("2026-08-04T10:00:00.000Z", content: "server"))
+        XCTAssertEqual(r, .applyRemote)
+    }
+
+    func testFastForwardOlderRemoteKeepsLocal() {
+        // Server regression (shouldn't happen): keep ours.
+        let r = fetch(local: "2026-08-04T11:00:00.000Z", base: "2026-08-04T11:00:00.000Z",
+                      remote: remote("2026-08-04T10:00:00.000Z"))
+        XCTAssertEqual(r, .keepLocalStoreTag)
+    }
+
+    // MARK: resolveFetch - local edits, remote already seen
+
+    func testSeenRemoteKeepsLocalEdits() {
+        // Remote is exactly the base we edited on top of: ours supersedes.
+        let r = fetch(local: "2026-08-04T11:00:00.000Z", base: "2026-08-04T10:00:00.000Z",
+                      remote: remote("2026-08-04T10:00:00.000Z"))
+        XCTAssertEqual(r, .keepLocalStoreTag)
+    }
+
+    // MARK: resolveFetch - forks (the 2026-08-06 incident class)
+
+    func testStaleStartForkMergesInsteadOfDiscardingOlderRemote() {
+        // THE incident: phone typed on an empty/stale base (never synced
+        // today's record, base nil), Mac's morning text is on the server
+        // with an OLDER stamp. v1 LWW kept local and the morning text never
+        // landed. v2: genuine fork -> merge.
+        let r = fetch(local: "2026-08-06T09:26:00.000Z", base: nil,
+                      localContent: "reverse-sync-test 0955",
+                      remote: remote("2026-08-06T08:00:00.000Z", content: "a whole morning of writing"))
+        XCTAssertEqual(r, .mergeAndUpload)
+    }
+
+    func testForkWithNewerRemoteAlsoMerges() {
+        // Both sides moved past the shared base: merge regardless of who is newer.
+        let r = fetch(local: "2026-08-04T10:30:00.000Z", base: "2026-08-04T09:00:00.000Z",
+                      localContent: "local fork", remote: remote("2026-08-04T11:00:00.000Z", content: "remote fork"))
+        XCTAssertEqual(r, .mergeAndUpload)
+    }
+
+    func testForkLocalAlreadyContainsRemoteKeepsLocal() {
+        // A previous merge (or buffer absorption) already stacked the remote
+        // text into local: nothing new to take.
+        let r = fetch(local: "2026-08-04T10:30:00.000Z", base: nil,
+                      localContent: "their text\n\nmy text",
+                      remote: remote("2026-08-04T10:00:00.000Z", content: "their text"))
+        XCTAssertEqual(r, .keepLocalStoreTag)
+    }
+
+    func testForkRemoteContainsLocalAppliesRemote() {
+        // The other device merged first: its copy includes ours.
+        let r = fetch(local: "2026-08-04T10:00:00.000Z", base: nil,
+                      localContent: "my text",
+                      remote: remote("2026-08-04T10:30:00.000Z", content: "my text\n\ntheir text"))
+        XCTAssertEqual(r, .applyRemote)
+    }
+
+    func testForkEmptyLocalAppliesRemote() {
+        // Empty content is contained in anything: no merge for a blank side.
+        let r = fetch(local: "2026-08-04T10:30:00.000Z", base: nil,
+                      localContent: "", remote: remote("2026-08-04T10:00:00.000Z", content: "text"))
+        XCTAssertEqual(r, .applyRemote)
+    }
+
+    // MARK: resolveConflict
+
+    private func conflict(
+        local: String, base: String?, localContent: String = "l", server s: RemoteEntry
+    ) -> ConflictResolution {
+        SyncReconciler.resolveConflict(
+            localModifiedAt: local,
+            lastSyncedModifiedAt: base,
+            localEqualsServer: localContent == s.content && s.location == nil,
+            localContainsServer: EntryMerge.contains(localContent, s.content),
+            serverContainsLocal: EntryMerge.contains(s.content, localContent),
+            server: s
+        )
+    }
+
+    func testConflictAgainstSeenServerVersionReuploads() {
+        let r = conflict(local: "2026-08-04T11:00:00.000Z", base: "2026-08-04T10:00:00.000Z",
+                         server: remote("2026-08-04T10:00:00.000Z"))
         XCTAssertEqual(r, .localWinsReupload)
     }
 
-    func testConflictServerNewerWins() {
-        let r = SyncReconciler.resolveConflict(
-            localModifiedAt: "2026-08-04T09:00:00.000Z", localContentEqualsServer: false,
-            server: remote("2026-08-04T10:00:00.000Z"))
-        XCTAssertEqual(r, .remoteWins)
-    }
-
-    func testConflictEqualStampSameContentIdentical() {
-        let r = SyncReconciler.resolveConflict(
-            localModifiedAt: "2026-08-04T10:00:00.000Z", localContentEqualsServer: true,
-            server: remote("2026-08-04T10:00:00.000Z"))
+    func testConflictSameContentIdentical() {
+        let r = conflict(local: "2026-08-04T10:00:00.000Z", base: nil, localContent: "same",
+                         server: remote("2026-08-04T10:05:00.000Z", content: "same"))
         XCTAssertEqual(r, .identical)
     }
 
-    func testConflictEqualStampDifferentContentPrefersServer() {
-        let r = SyncReconciler.resolveConflict(
-            localModifiedAt: "2026-08-04T10:00:00.000Z", localContentEqualsServer: false,
-            server: remote("2026-08-04T10:00:00.000Z"))
+    func testConflictForkMerges() {
+        // First upload from a device that typed on a stale base ("record to
+        // insert already exists"): server text is unseen -> merge, not clobber.
+        let r = conflict(local: "2026-08-06T09:26:00.000Z", base: nil,
+                         localContent: "reverse-sync-test 0955",
+                         server: remote("2026-08-06T08:00:00.000Z", content: "a whole morning of writing"))
+        XCTAssertEqual(r, .mergeAndReupload)
+    }
+
+    func testConflictServerContainsLocalTakesServer() {
+        let r = conflict(local: "2026-08-04T10:00:00.000Z", base: nil,
+                         localContent: "mine",
+                         server: remote("2026-08-04T10:30:00.000Z", content: "mine\n\ntheirs"))
         XCTAssertEqual(r, .remoteWins)
     }
 
@@ -92,6 +178,60 @@ final class SyncReconcilerTests: XCTestCase {
 
     func testCrossDayComparison() {
         XCTAssertEqual(SyncReconciler.compare("2026-08-03T23:59:59.999Z", "2026-08-04T00:00:00.000Z"), .orderedAscending)
+    }
+}
+
+final class EntryMergeTests: XCTestCase {
+    func testMergePutsOlderAboveNewer() {
+        let merged = EntryMerge.merge(
+            aContent: "typed later on the phone", aStamp: "2026-08-06T09:26:00.000Z",
+            bContent: "written in the morning on the mac", bStamp: "2026-08-06T08:00:00.000Z"
+        )
+        XCTAssertEqual(merged, "written in the morning on the mac\n\ntyped later on the phone")
+    }
+
+    func testMergeIsDeterministicRegardlessOfArgumentOrder() {
+        // Both devices merge the same fork -> identical bytes -> convergence.
+        let ab = EntryMerge.merge(aContent: "A", aStamp: "2026-08-06T08:00:00.000Z",
+                                  bContent: "B", bStamp: "2026-08-06T09:00:00.000Z")
+        let ba = EntryMerge.merge(aContent: "B", aStamp: "2026-08-06T09:00:00.000Z",
+                                  bContent: "A", bStamp: "2026-08-06T08:00:00.000Z")
+        XCTAssertEqual(ab, ba)
+        XCTAssertEqual(ab, "A\n\nB")
+    }
+
+    func testMergeEqualStampsOrdersByContent() {
+        let xy = EntryMerge.merge(aContent: "x", aStamp: "2026-08-06T08:00:00.000Z",
+                                  bContent: "y", bStamp: "2026-08-06T08:00:00.000Z")
+        let yx = EntryMerge.merge(aContent: "y", aStamp: "2026-08-06T08:00:00.000Z",
+                                  bContent: "x", bStamp: "2026-08-06T08:00:00.000Z")
+        XCTAssertEqual(xy, yx)
+    }
+
+    func testStackTrimsBlankEdgesOnly() {
+        let merged = EntryMerge.stack(older: "morning text\n\n", newer: "\nevening text")
+        XCTAssertEqual(merged, "morning text\n\nevening text")
+    }
+
+    func testStackWithEmptySideReturnsOther() {
+        XCTAssertEqual(EntryMerge.stack(older: "", newer: "text"), "text")
+        XCTAssertEqual(EntryMerge.stack(older: "text", newer: "\n"), "text")
+    }
+
+    func testContainsIsTrimmedVerbatim() {
+        XCTAssertTrue(EntryMerge.contains("their text\n\nmy text", "their text"))
+        XCTAssertTrue(EntryMerge.contains("anything", ""))
+        XCTAssertTrue(EntryMerge.contains("anything", "\n  \n"))
+        XCTAssertFalse(EntryMerge.contains("short", "something else"))
+    }
+
+    func testDoubleMergeIsIdempotentViaContainment() {
+        // After a merge, re-encountering either source must not re-merge:
+        // the merged text contains both sides verbatim.
+        let merged = EntryMerge.merge(aContent: "mine", aStamp: "2026-08-06T09:00:00.000Z",
+                                      bContent: "theirs", bStamp: "2026-08-06T08:00:00.000Z")
+        XCTAssertTrue(EntryMerge.contains(merged, "mine"))
+        XCTAssertTrue(EntryMerge.contains(merged, "theirs"))
     }
 }
 
@@ -161,7 +301,7 @@ final class JournalRecordCoderTests: XCTestCase {
 
     func testDecodeMissingModifiedAtFallsBackToEpoch() {
         // Fresh unsaved record has no modificationDate either -> epoch. The
-        // entry survives (never drop data), it just loses every LWW contest.
+        // entry survives (never drop data), it just loses every version contest.
         let record = CKRecord(recordType: SyncSchema.recordType, recordID: SyncSchema.recordID(dateKey: "2026-08-04"))
         record.encryptedValues["content"] = "orphan"
         let decoded = JournalRecordCoder.decode(record)
