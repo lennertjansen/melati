@@ -106,7 +106,14 @@ window.nootSetContent = (md: string) => {
 	lastReceived = md;
 	const current = getMarkdown(editor);
 	if (md !== current) {
+		const wasFocused = editor.isFocused;
 		editor.commands.setContent(md, { emitUpdate: false });
+		// A mid-typing content swap only happens on a sync merge, which
+		// places the live text last - keep the caret at the end so typing
+		// continues where it left off.
+		if (wasFocused) {
+			editor.commands.focus("end");
+		}
 	}
 };
 

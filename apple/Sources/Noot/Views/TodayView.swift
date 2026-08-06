@@ -87,10 +87,11 @@ struct TodayView: View {
         await load()
     }
 
-    /// A remote change for today already landed in the store (LWW decided it
-    /// wins over what was persisted). A clean editor refreshes silently; a
-    /// dirty one is never stomped - the pending autosave carries a newer
-    /// stamp and wins everywhere, so just show the passive notice.
+    /// A remote change for today already landed in the store (the reconciler
+    /// merged any fork - older content above). A clean editor refreshes
+    /// silently; a dirty one absorbs the unseen content ABOVE what is being
+    /// typed - keystrokes are never lost, and neither is the other device's
+    /// text.
     private func applyRemoteChange() async {
         guard loaded else { return }
         guard let fresh = try? await env.store.get(date: dateKey) else { return }
@@ -108,8 +109,34 @@ struct TodayView: View {
             persistedLocation = fresh.location
             remoteUpdateNotice = false
         case .notice:
+            saveTask?.cancel()
+            let buffer = content
+            let previousPersisted = persistedContent
+            let newBuffer: String
+            if EntryMerge.contains(fresh.content, buffer) {
+                // Store already absorbed everything in the buffer.
+                newBuffer = fresh.content
+            } else if EntryMerge.contains(buffer, fresh.content) {
+                // Buffer already absorbed the store content.
+                newBuffer = buffer
+            } else if !previousPersisted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                      fresh.content.hasSuffix(previousPersisted) {
+                // The reconciler stacked unseen content above our persisted
+                // text; swap the trailing persisted block for the live buffer
+                // so unsaved keystrokes survive without duplication.
+                newBuffer = String(fresh.content.dropLast(previousPersisted.count)) + buffer
+            } else {
+                // Live keystrokes are newer than anything in the store:
+                // unseen content goes above.
+                newBuffer = EntryMerge.stack(older: fresh.content, newer: buffer)
+            }
             persistedContent = fresh.content
             persistedLocation = fresh.location
+            if existingCreatedAt == nil { existingCreatedAt = fresh.createdAt }
+            if newBuffer != content {
+                content = newBuffer
+                scheduleAutosave()
+            }
             withAnimation { remoteUpdateNotice = true }
         }
     }

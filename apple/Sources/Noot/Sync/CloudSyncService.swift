@@ -218,12 +218,15 @@ extension CloudSyncService: CKSyncEngineDelegate {
             guard let remote = JournalRecordCoder.decode(modification.record) else { continue }
             let systemFields = Self.systemFieldsData(of: modification.record)
             let local = try? await store.get(date: remote.date)
+            let syncRow = try? await store.syncRow(date: remote.date)
             let localModifiedAt = local?.modifiedAt.map(Self.iso.string(from:))
-            let contentEqual = local?.content == remote.content && local?.location == remote.location
 
             let resolution = SyncReconciler.resolveFetch(
                 localModifiedAt: localModifiedAt,
-                localContentEqualsRemote: contentEqual,
+                lastSyncedModifiedAt: syncRow?.lastSyncedModifiedAt,
+                localEqualsRemote: local?.content == remote.content && local?.location == remote.location,
+                localContainsRemote: EntryMerge.contains(local?.content ?? "", remote.content),
+                remoteContainsLocal: EntryMerge.contains(remote.content, local?.content ?? ""),
                 remote: remote
             )
             switch resolution {
@@ -236,13 +239,30 @@ extension CloudSyncService: CKSyncEngineDelegate {
                     location: remote.location,
                     modifiedAt: remote.modifiedAt,
                     systemFields: systemFields,
-                    backupReason: hadLocal ? "lww-remote-won" : nil
+                    backupReason: hadLocal ? "superseded-by-remote" : nil
                 )
                 touched.insert(remote.date)
             case .keepLocalStoreTag:
                 try? await store.storeSystemFields(date: remote.date, systemFields)
             case .identical:
                 try? await store.markUploaded(date: remote.date, uploadedModifiedAt: remote.modifiedAt, systemFields: systemFields)
+            case .mergeAndUpload:
+                guard let local else { break }
+                log("fork on \(remote.date): merging (older above), re-uploading")
+                let merged = EntryMerge.merge(
+                    aContent: local.content, aStamp: localModifiedAt ?? "",
+                    bContent: remote.content, bStamp: remote.modifiedAt
+                )
+                // put() stamps fresh + marks pending; the localChanges stream
+                // schedules the upload of the merged entry automatically.
+                try? await store.put(JournalEntry(
+                    date: remote.date,
+                    content: merged,
+                    createdAt: local.createdAt ?? remote.createdAt.flatMap(Self.iso.date(from:)),
+                    location: Self.mergedLocation(localStamp: localModifiedAt, localLocation: local.location, remote: remote)
+                ))
+                try? await store.storeSystemFields(date: remote.date, systemFields)
+                touched.insert(remote.date)
             }
         }
 
@@ -357,13 +377,16 @@ extension CloudSyncService: CKSyncEngineDelegate {
     private func resolveUploadConflict(date: String, serverRecord: CKRecord?) async {
         guard let serverRecord, let server = JournalRecordCoder.decode(serverRecord) else { return }
         guard let localEntry = try? await store.get(date: date) else { return }
+        let syncRow = try? await store.syncRow(date: date)
         let localModifiedAt = localEntry.modifiedAt.map(Self.iso.string(from:)) ?? Self.iso.string(from: Date())
-        let contentEqual = localEntry.content == server.content && localEntry.location == server.location
         let systemFields = Self.systemFieldsData(of: serverRecord)
 
         switch SyncReconciler.resolveConflict(
             localModifiedAt: localModifiedAt,
-            localContentEqualsServer: contentEqual,
+            lastSyncedModifiedAt: syncRow?.lastSyncedModifiedAt,
+            localEqualsServer: localEntry.content == server.content && localEntry.location == server.location,
+            localContainsServer: EntryMerge.contains(localEntry.content, server.content),
+            serverContainsLocal: EntryMerge.contains(server.content, localEntry.content),
             server: server
         ) {
         case .localWinsReupload:
@@ -379,18 +402,46 @@ extension CloudSyncService: CKSyncEngineDelegate {
                 location: server.location,
                 modifiedAt: server.modifiedAt,
                 systemFields: systemFields,
-                backupReason: "lww-remote-won"
+                backupReason: "superseded-by-remote"
             )
-            let changed = server.date
-            await MainActor.run {
-                NotificationCenter.default.post(
-                    name: .nootEntriesChangedRemotely,
-                    object: nil,
-                    userInfo: ["dates": Set([changed])]
-                )
-            }
+            await postRemoteChange(dates: [server.date])
         case .identical:
             try? await store.markUploaded(date: date, uploadedModifiedAt: server.modifiedAt, systemFields: systemFields)
+        case .mergeAndReupload:
+            log("fork on \(date) at upload: merging (older above), re-uploading")
+            let merged = EntryMerge.merge(
+                aContent: localEntry.content, aStamp: localModifiedAt,
+                bContent: server.content, bStamp: server.modifiedAt
+            )
+            try? await store.put(JournalEntry(
+                date: date,
+                content: merged,
+                createdAt: localEntry.createdAt ?? server.createdAt.flatMap(Self.iso.date(from:)),
+                location: Self.mergedLocation(localStamp: localModifiedAt, localLocation: localEntry.location, remote: server)
+            ))
+            try? await store.storeSystemFields(date: date, systemFields)
+            engine?.state.add(pendingRecordZoneChanges: [.saveRecord(SyncSchema.recordID(dateKey: date))])
+            await postRemoteChange(dates: [date])
+        }
+    }
+
+    /// Merged entries keep the newer side's location when it has one; the
+    /// older side's otherwise. Content merges, location cannot.
+    private static func mergedLocation(localStamp: String?, localLocation: String?, remote: RemoteEntry) -> String? {
+        let localIsNewer = localStamp.map { SyncReconciler.compare($0, remote.modifiedAt) == .orderedDescending } ?? false
+        let newer = localIsNewer ? localLocation : remote.location
+        let older = localIsNewer ? remote.location : localLocation
+        if let newer, !newer.isEmpty { return newer }
+        return older
+    }
+
+    private func postRemoteChange(dates: Set<String>) async {
+        await MainActor.run {
+            NotificationCenter.default.post(
+                name: .nootEntriesChangedRemotely,
+                object: nil,
+                userInfo: ["dates": dates]
+            )
         }
     }
 
