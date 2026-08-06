@@ -10,7 +10,14 @@ enum SyncStatus: Equatable, Sendable {
     /// Synced, nothing in flight.
     case idle
     case syncing
-    case error(String)
+    case error(SyncError)
+}
+
+enum SyncError: Equatable, Sendable {
+    case fetchFailed
+    case uploadFailed
+    /// iCloud storage full: entries stay pending and retry once space frees.
+    case quotaFull
 }
 
 /// Folds engine activity into a SyncStatus. In-flight operations are counted
@@ -18,7 +25,7 @@ enum SyncStatus: Equatable, Sendable {
 /// success clears it, so a transient failure shows until the retry lands.
 struct SyncActivity: Equatable, Sendable {
     private var inFlight = 0
-    private var lastError: String?
+    private var lastError: SyncError?
 
     var status: SyncStatus {
         if inFlight > 0 { return .syncing }
@@ -34,8 +41,8 @@ struct SyncActivity: Equatable, Sendable {
         inFlight = max(0, inFlight - 1)
     }
 
-    mutating func noteError(_ message: String) {
-        lastError = message
+    mutating func noteError(_ error: SyncError) {
+        lastError = error
     }
 
     mutating func noteSuccess() {

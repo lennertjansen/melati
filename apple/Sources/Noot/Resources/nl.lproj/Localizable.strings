@@ -21,3 +21,4 @@
 "sync.off" = "Sync uit";
 "sync.syncing" = "Synchroniseren…";
 "sync.error" = "Syncfout";
+"sync.quota" = "iCloud-opslag vol";

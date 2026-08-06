@@ -21,3 +21,4 @@
 "sync.off" = "Sync off";
 "sync.syncing" = "Syncing…";
 "sync.error" = "Sync error";
+"sync.quota" = "iCloud storage full";
