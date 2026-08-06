@@ -28,6 +28,17 @@ final class AppEnvironment {
     func startSyncIfAvailable() {
         guard SyncSettings.isEnabled, sync == nil else { return }
         Task {
+            #if DEBUG
+            // Repair hook: launch with `-noot.resetSyncState YES` to forget
+            // all server associations (engine state, change tags) and mark
+            // every entry pending - a full re-upload + re-fetch reconciled by
+            // the merge logic. Local data untouched. Launch-argument values
+            // live in the volatile argument domain, so this is one-shot.
+            if UserDefaults.standard.bool(forKey: "noot.resetSyncState") {
+                print("[noot.sync] RESET requested via launch argument - forgetting sync state")
+                try? await store.resetSyncState()
+            }
+            #endif
             guard await CloudSyncService.accountAvailable() else {
                 print("[noot.sync] no iCloud account - staying local")
                 return

@@ -37,6 +37,10 @@ actor CloudSyncService {
 
     private static let engineStateKey = "engine_state"
     private static let zoneCreatedKey = "zone_created"
+    /// CKRecordID.recordName of the iCloud user we last synced with. A fresh
+    /// engine always announces the account via .signIn; without this marker
+    /// every fresh start would look like a new account and reset forever.
+    private static let accountUserKey = "account_user"
 
     init(store: JournalStore, onStatus: @escaping @MainActor (SyncStatus) -> Void = { _ in }) {
         self.store = store
@@ -52,6 +56,7 @@ actor CloudSyncService {
         if let data = try? await store.syncMeta(key: Self.engineStateKey) {
             serialization = try? JSONDecoder().decode(CKSyncEngine.State.Serialization.self, from: data)
         }
+        log(serialization == nil ? "engine state: fresh (no serialization)" : "engine state: restored")
 
         let container = CKContainer(identifier: "iCloud.com.lennertjansen.noot")
         let configuration = CKSyncEngine.Configuration(
@@ -71,7 +76,10 @@ actor CloudSyncService {
         // between a DB commit and the engine-state save; idempotent because
         // uploads are upserts.
         if let pending = try? await store.pendingDates(), !pending.isEmpty {
+            log("launch reconcile: re-queueing \(pending.count) pending: \(pending.joined(separator: ", "))")
             engine.state.add(pendingRecordZoneChanges: pending.map { .saveRecord(SyncSchema.recordID(dateKey: $0)) })
+        } else {
+            log("launch reconcile: nothing pending")
         }
 
         // Every local write becomes a pending upload.
@@ -97,8 +105,10 @@ actor CloudSyncService {
     /// the engine's own scheduler covers the rest.
     func fetchNow() async {
         guard let engine else { return }
+        log("fetchNow: begin")
         do {
             try await engine.fetchChanges()
+            log("fetchNow: ok")
             activity.noteSuccess()
         } catch {
             log("fetchChanges failed: \(error)")
@@ -115,6 +125,7 @@ actor CloudSyncService {
         guard let engine else { return }
         switch change {
         case .entryChanged(let date):
+            log("local change queued: \(date)")
             engine.state.add(pendingRecordZoneChanges: [.saveRecord(SyncSchema.recordID(dateKey: date))])
         }
     }
@@ -132,6 +143,10 @@ actor CloudSyncService {
 
     private func log(_ message: String) {
         print("[noot.sync] \(message)")
+        // stdout is fully buffered when redirected to a file; without the
+        // flush, hours of diagnosis chased "hangs" that were just unflushed
+        // buffers (2026-08-06, the hard way).
+        fflush(stdout)
     }
 }
 
@@ -155,18 +170,37 @@ extension CloudSyncService: CKSyncEngineDelegate {
             try? await store.setSyncMeta(key: Self.zoneCreatedKey, value: Data([1]))
 
         case .accountChange(let change):
-            await handleAccountChange(change.changeType)
+            // MUST NOT run inline: handleAccountChange rebuilds the engine
+            // and fetches, which calls back into delegate callbacks -
+            // awaiting that from inside handleEvent is a CKSyncEngine fatal
+            // error ("BUG IN CLIENT OF CLOUDKIT"). Detached task per docs.
+            let changeType = change.changeType
+            Task.detached { [weak self] in
+                await self?.handleAccountChange(changeType)
+            }
 
         case .fetchedDatabaseChanges(let changes):
             for deletion in changes.deletions where deletion.zoneID == SyncSchema.zoneID {
                 await handleZoneDeleted()
             }
 
-        case .willFetchChanges, .willSendChanges:
+        case .willFetchChanges:
+            log("event: willFetchChanges")
             activity.begin()
             publishStatus()
 
-        case .didFetchChanges, .didSendChanges:
+        case .willSendChanges:
+            log("event: willSendChanges")
+            activity.begin()
+            publishStatus()
+
+        case .didFetchChanges:
+            log("event: didFetchChanges")
+            activity.end()
+            publishStatus()
+
+        case .didSendChanges:
+            log("event: didSendChanges")
             activity.end()
             publishStatus()
 
@@ -186,6 +220,7 @@ extension CloudSyncService: CKSyncEngineDelegate {
         let pending = syncEngine.state.pendingRecordZoneChanges.filter { scope.contains($0) }
         guard !pending.isEmpty else { return nil }
 
+        log("uploading batch: \(pending.count) change(s)")
         return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pending) { recordID in
             let date = recordID.recordName
             guard let entry = try? await self.store.get(date: date) else {
@@ -229,6 +264,7 @@ extension CloudSyncService: CKSyncEngineDelegate {
                 remoteContainsLocal: EntryMerge.contains(remote.content, local?.content ?? ""),
                 remote: remote
             )
+            log("fetched \(remote.date): resolution=\(resolution)")
             switch resolution {
             case .applyRemote:
                 let hadLocal = local != nil
@@ -288,18 +324,35 @@ extension CloudSyncService: CKSyncEngineDelegate {
 
     /// The journal is NEVER purged on account changes. Reset forgets server
     /// associations and marks everything pending; the rebuilt engine uploads
-    /// all local entries and fetches the account's records - LWW merges.
+    /// all local entries and fetches the account's records - the reconciler
+    /// merges. Runs in a detached task (never inline in handleEvent).
     private func handleAccountChange(_ changeType: CKSyncEngine.Event.AccountChange.ChangeType) async {
         let event: AccountEvent
+        var newUser: String?
         switch changeType {
-        case .signIn: event = .signIn
-        case .signOut: event = .signOut
-        case .switchAccounts: event = .switchAccounts
+        case .signIn(let currentUser):
+            // Fired by every fresh engine for the CURRENT account too: only
+            // a genuinely different user warrants a reset.
+            let stored = (try? await store.syncMeta(key: Self.accountUserKey))
+                .flatMap { String(data: $0, encoding: .utf8) }
+            if stored == currentUser.recordName {
+                log("account signIn: same user, nothing to do")
+                return
+            }
+            log("account signIn: \(stored == nil ? "no stored user" : "different user") - reset + merge")
+            event = .signIn
+            newUser = currentUser.recordName
+        case .signOut:
+            log("account signOut - keep data, reset associations, engine idles")
+            event = .signOut
+        case .switchAccounts(_, let currentUser):
+            log("account switch - reset + merge into new account")
+            event = .switchAccounts
+            newUser = currentUser.recordName
         @unknown default:
             log("unhandled account change: \(changeType)")
             return
         }
-        log("account change: \(event)")
 
         let plan = SyncEdgePolicy.plan(for: event)
         // Drop the old engine before touching state so nothing uploads
@@ -311,6 +364,10 @@ extension CloudSyncService: CKSyncEngineDelegate {
 
         if plan.resetSyncState {
             try? await store.resetSyncState()
+        }
+        // After the reset (which wipes sync_meta) so the marker survives.
+        if let newUser {
+            try? await store.setSyncMeta(key: Self.accountUserKey, value: Data(newUser.utf8))
         }
         if plan.restartEngine {
             await start()
@@ -335,6 +392,7 @@ extension CloudSyncService: CKSyncEngineDelegate {
     // MARK: - Sent changes <- server verdicts
 
     private func handleSentChanges(_ sent: CKSyncEngine.Event.SentRecordZoneChanges) async {
+        log("sent: \(sent.savedRecords.count) saved (\(sent.savedRecords.map(\.recordID.recordName).joined(separator: ", "))), \(sent.failedRecordSaves.count) failed")
         if !sent.savedRecords.isEmpty && sent.failedRecordSaves.isEmpty {
             activity.noteSuccess()
             publishStatus()
