@@ -38,7 +38,7 @@ jobs:
             test | tail -100
 
   ios:
-    name: iOS build (simulator)
+    name: iOS build + tests (simulator)
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -57,12 +57,18 @@ jobs:
         working-directory: apple
         run: xcodegen
 
-      - name: Build for iOS Simulator
+      - name: Build and test on iOS Simulator
         working-directory: apple
+        # Concrete device picked at runtime: destination names churn with
+        # every Xcode release, the first available iPhone does not.
         run: |
+          UDID=$(xcrun simctl list devices available -j \
+            | jq -r '[.devices[] | .[] | select(.name | startswith("iPhone"))][0].udid')
+          echo "Using simulator $UDID"
           xcodebuild -project Noot.xcodeproj -scheme NootIOS \
-            -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO build | tail -50
+            -destination "platform=iOS Simulator,id=$UDID" \
+            CODE_SIGNING_ALLOWED=NO \
+            test | tail -100
 
   lint:
     name: Lint + editor embed build
@@ -85,3 +91,16 @@ jobs:
         run: |
           npm ci
           npm run build
+
+      - name: Editor bundle drift check
+        # The committed bundle (apple/Resources/editor) must be exactly what
+        # editor-embed sources produce - catches source edits that forgot the
+        # rebuild, and hand-edits to the generated bundle.
+        run: |
+          git status --porcelain -- apple/Resources/editor
+          if ! git diff --quiet -- apple/Resources/editor \
+            || [ -n "$(git status --porcelain -- apple/Resources/editor)" ]; then
+            echo "::error::apple/Resources/editor drifted from editor-embed sources. Run 'npm run build' in apple/editor-embed and commit the result."
+            git diff --stat -- apple/Resources/editor
+            exit 1
+          fi

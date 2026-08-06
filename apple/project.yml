@@ -35,8 +35,13 @@ schemes:
     build:
       targets:
         NootIOS: all
+        NootIOSTests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - NootIOSTests
 
 packages:
   SwiftSQLCipher:
@@ -158,6 +163,21 @@ targets:
   NootTests:
     type: bundle.unit-test
     platform: macOS
+    sources:
+      - path: Tests/NootTests
+      - path: Sources/Noot
+    dependencies:
+      - package: SwiftSQLCipher
+        product: SQLiteDB
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
+  # Same test sources, iOS simulator: shared code (SQLCipher, sync logic,
+  # policies) verified on the platform it actually ships on.
+  NootIOSTests:
+    type: bundle.unit-test
+    platform: iOS
     sources:
       - path: Tests/NootTests
       - path: Sources/Noot
