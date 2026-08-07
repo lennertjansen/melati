@@ -233,6 +233,62 @@ final class EntryMergeTests: XCTestCase {
         XCTAssertTrue(EntryMerge.contains(merged, "mine"))
         XCTAssertTrue(EntryMerge.contains(merged, "theirs"))
     }
+
+    // MARK: prefix-aware merging (the take2/take3 duplication wart)
+
+    func testSharedPrefixIsNotDuplicated() {
+        // Both devices appended to the same synced base: base appears once,
+        // older fork verbatim, newer fork's novel tail below.
+        let merged = EntryMerge.merge(
+            aContent: "shared base\n\nmac addition", aStamp: "2026-08-06T10:00:00.000Z",
+            bContent: "shared base\n\nphone addition", bStamp: "2026-08-06T11:00:00.000Z"
+        )
+        XCTAssertEqual(merged, "shared base\n\nmac addition\n\nphone addition")
+    }
+
+    func testSharedPrefixMergeKeepsListStructure() {
+        // Line-based split: the older version stays verbatim even for
+        // single-newline structures like lists.
+        let merged = EntryMerge.merge(
+            aContent: "- a\n- b", aStamp: "2026-08-06T10:00:00.000Z",
+            bContent: "- a\n- c", bStamp: "2026-08-06T11:00:00.000Z"
+        )
+        XCTAssertEqual(merged, "- a\n- b\n\n- c")
+    }
+
+    func testDisjointContentStillStacksWhole() {
+        let merged = EntryMerge.merge(
+            aContent: "completely different", aStamp: "2026-08-06T10:00:00.000Z",
+            bContent: "no overlap at all", bStamp: "2026-08-06T11:00:00.000Z"
+        )
+        XCTAssertEqual(merged, "completely different\n\nno overlap at all")
+    }
+
+    func testRemergingSourceAgainstResultConverges() {
+        // The failure mode that caused duplication: the merged result meets
+        // one of its sources again. Guards must return the result unchanged.
+        let older = "shared\n\nmac part"
+        let newer = "shared\n\nphone part"
+        let merged = EntryMerge.merge(
+            aContent: older, aStamp: "2026-08-06T10:00:00.000Z",
+            bContent: newer, bStamp: "2026-08-06T11:00:00.000Z"
+        )
+        // merged is newest; re-encounter each source as the older side.
+        XCTAssertEqual(EntryMerge.mergeOrdered(older: older, newer: merged), merged)
+        XCTAssertEqual(EntryMerge.mergeOrdered(older: newer, newer: merged), merged)
+    }
+
+    func testLinearExtensionReturnsNewer() {
+        // Newer strictly extends older: nothing novel in the older tail.
+        let merged = EntryMerge.mergeOrdered(older: "day one", newer: "day one\n\nday two")
+        XCTAssertEqual(merged, "day one\n\nday two")
+    }
+
+    func testForkDeletionKeepsContent() {
+        // Newer deleted the tail while forked: fork semantics never discard.
+        let merged = EntryMerge.mergeOrdered(older: "keep\n\nthis text", newer: "keep")
+        XCTAssertEqual(merged, "keep\n\nthis text")
+    }
 }
 
 final class JournalRecordCoderTests: XCTestCase {
