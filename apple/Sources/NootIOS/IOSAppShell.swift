@@ -7,10 +7,10 @@ struct IOSAppShell: View {
     @State private var entryDates: [String] = []
 
     init() {
-        // Verification hook: `simctl launch ... -noot.initialTab entries`
+        // Verification hook: `simctl launch ... -melati.initialTab entries`
         // (launch arguments land in UserDefaults). Screenshot tooling has no
         // way to tap the simulator; real launches always start on Today.
-        switch UserDefaults.standard.string(forKey: "noot.initialTab") {
+        switch UserDefaults.standard.string(forKey: "melati.initialTab") {
         case "entries": _selection = State(initialValue: .entries)
         case "calendar": _selection = State(initialValue: .calendar)
         default: break
@@ -50,11 +50,11 @@ struct IOSAppShell: View {
             guard new != nil else { return }
             Task { entryDates = (try? await env.store.listDates()) ?? [] }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nootNewEntry)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .melatiNewEntry)) { _ in
             selectedDate = nil
             selection = .today
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nootSelectTab)) { note in
+        .onReceive(NotificationCenter.default.publisher(for: .melatiSelectTab)) { note in
             if let tab = note.object as? NavTab {
                 selectedDate = nil
                 selection = tab

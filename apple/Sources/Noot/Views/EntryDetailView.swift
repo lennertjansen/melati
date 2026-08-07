@@ -82,7 +82,7 @@ struct EntryDetailView: View {
         .task(id: dateKey) {
             await load()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nootEntriesChangedRemotely)) { note in
+        .onReceive(NotificationCenter.default.publisher(for: .melatiEntriesChangedRemotely)) { note in
             // Read-only view: refreshing can never stomp anything.
             guard let dates = note.userInfo?["dates"] as? Set<String>, dates.contains(dateKey) else { return }
             Task { await load() }

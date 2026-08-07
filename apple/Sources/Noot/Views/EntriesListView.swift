@@ -5,7 +5,7 @@ struct EntriesListView: View {
 
     let onSelectDate: (String) -> Void
 
-    @AppStorage("noot.listGrouping") private var groupingRaw: String = "flat"
+    @AppStorage("melati.listGrouping") private var groupingRaw: String = "flat"
     @State private var summaries: [EntrySummary] = []
     @State private var loaded: Bool = false
 
@@ -38,7 +38,7 @@ struct EntriesListView: View {
         .task {
             await load()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nootEntriesChangedRemotely)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .melatiEntriesChangedRemotely)) { _ in
             Task { await load() }
         }
     }

@@ -15,7 +15,7 @@ enum NavTab: Hashable, CaseIterable {
 }
 
 extension Notification.Name {
-    static let nootNewEntry = Notification.Name("NootNewEntry")
-    static let nootSelectTab = Notification.Name("NootSelectTab")
-    static let nootFocusLocation = Notification.Name("NootFocusLocation")
+    static let melatiNewEntry = Notification.Name("MelatiNewEntry")
+    static let melatiSelectTab = Notification.Name("MelatiSelectTab")
+    static let melatiFocusLocation = Notification.Name("MelatiFocusLocation")
 }

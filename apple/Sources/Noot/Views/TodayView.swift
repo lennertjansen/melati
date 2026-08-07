@@ -65,7 +65,7 @@ struct TodayView: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
             Task { await rollOverToToday() }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nootEntriesChangedRemotely)) { note in
+        .onReceive(NotificationCenter.default.publisher(for: .melatiEntriesChangedRemotely)) { note in
             guard let dates = note.userInfo?["dates"] as? Set<String>, dates.contains(dateKey) else { return }
             Task { await applyRemoteChange() }
         }

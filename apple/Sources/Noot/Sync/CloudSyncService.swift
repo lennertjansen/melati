@@ -8,13 +8,13 @@ import Foundation
 extension Notification.Name {
     /// Posted on the main actor after remote changes land locally.
     /// userInfo["dates"] is a Set<String> of affected dateKeys.
-    static let nootEntriesChangedRemotely = Notification.Name("NootEntriesChangedRemotely")
+    static let melatiEntriesChangedRemotely = Notification.Name("MelatiEntriesChangedRemotely")
 }
 
 enum SyncSettings {
-    static let enabledKey = "noot.sync.enabled"
+    static let enabledKey = "melati.sync.enabled"
 
-    /// Kill switch: `defaults write com.lennertjansen.noot noot.sync.enabled -bool NO`
+    /// Kill switch: `defaults write com.lennertjansen.melati melati.sync.enabled -bool NO`
     /// (or the same key in iOS UserDefaults). Defaults to on - sync is core.
     static var isEnabled: Bool {
         UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true
@@ -24,7 +24,7 @@ enum SyncSettings {
 actor CloudSyncService {
     /// Keeps CloudKit imports out of AppEnvironment.
     static func accountAvailable() async -> Bool {
-        let status = try? await CKContainer(identifier: "iCloud.com.lennertjansen.noot").accountStatus()
+        let status = try? await CKContainer(identifier: "iCloud.com.lennertjansen.melati").accountStatus()
         return status == .available
     }
 
@@ -58,7 +58,7 @@ actor CloudSyncService {
         }
         log(serialization == nil ? "engine state: fresh (no serialization)" : "engine state: restored")
 
-        let container = CKContainer(identifier: "iCloud.com.lennertjansen.noot")
+        let container = CKContainer(identifier: "iCloud.com.lennertjansen.melati")
         let configuration = CKSyncEngine.Configuration(
             database: container.privateCloudDatabase,
             stateSerialization: serialization,
@@ -142,7 +142,7 @@ actor CloudSyncService {
     }
 
     private func log(_ message: String) {
-        print("[noot.sync] \(message)")
+        print("[melati.sync] \(message)")
         // stdout is fully buffered when redirected to a file; without the
         // flush, hours of diagnosis chased "hangs" that were just unflushed
         // buffers (2026-08-06, the hard way).
@@ -312,7 +312,7 @@ extension CloudSyncService: CKSyncEngineDelegate {
             let dates = touched
             await MainActor.run {
                 NotificationCenter.default.post(
-                    name: .nootEntriesChangedRemotely,
+                    name: .melatiEntriesChangedRemotely,
                     object: nil,
                     userInfo: ["dates": dates]
                 )
@@ -496,7 +496,7 @@ extension CloudSyncService: CKSyncEngineDelegate {
     private func postRemoteChange(dates: Set<String>) async {
         await MainActor.run {
             NotificationCenter.default.post(
-                name: .nootEntriesChangedRemotely,
+                name: .melatiEntriesChangedRemotely,
                 object: nil,
                 userInfo: ["dates": dates]
             )

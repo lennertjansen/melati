@@ -7,7 +7,7 @@ final class JournalStoreTests: XCTestCase {
     override func setUp() {
         super.setUp()
         let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("noot-tests-\(UUID().uuidString)")
+            .appendingPathComponent("melati-tests-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         dbPath = dir.appendingPathComponent("journal.db").path
     }
@@ -160,7 +160,7 @@ final class KeyStoreTests: XCTestCase {
         throw XCTSkip("keychain unavailable in hostless iOS test bundle")
         #endif
         keyStore = KeyStore(
-            service: "com.lennertjansen.noot.tests",
+            service: "com.lennertjansen.melati.tests",
             account: "test-key-\(UUID().uuidString)"
         )
     }

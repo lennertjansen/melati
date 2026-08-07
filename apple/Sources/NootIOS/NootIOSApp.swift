@@ -30,7 +30,7 @@ struct NootIOSApp: App {
                 var id: UIBackgroundTaskIdentifier = .invalid
             }
             let box = TaskBox()
-            box.id = UIApplication.shared.beginBackgroundTask(withName: "noot.flush") {
+            box.id = UIApplication.shared.beginBackgroundTask(withName: "melati.flush") {
                 UIApplication.shared.endBackgroundTask(box.id)
             }
             Task {

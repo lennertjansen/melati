@@ -7,7 +7,7 @@ final class SyncStoreTests: XCTestCase {
     override func setUp() {
         super.setUp()
         let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("noot-sync-tests-\(UUID().uuidString)")
+            .appendingPathComponent("melati-sync-tests-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         dbPath = dir.appendingPathComponent("journal.db").path
     }

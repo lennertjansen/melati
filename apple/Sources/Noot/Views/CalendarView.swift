@@ -31,7 +31,7 @@ struct CalendarView: View {
         .task {
             await load()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nootEntriesChangedRemotely)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .melatiEntriesChangedRemotely)) { _ in
             Task { await load() }
         }
     }

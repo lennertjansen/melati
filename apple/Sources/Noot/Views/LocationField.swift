@@ -29,7 +29,7 @@ struct LocationField: View {
         Group {
             content
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nootFocusLocation)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .melatiFocusLocation)) { _ in
             guard !readOnly else { return }
             if !editing { editing = true } else { focused = true }
         }

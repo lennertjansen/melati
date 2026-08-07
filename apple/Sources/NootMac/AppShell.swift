@@ -56,11 +56,11 @@ struct AppShell: View {
             guard new != nil else { return }
             Task { entryDates = (try? await env.store.listDates()) ?? [] }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nootNewEntry)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .melatiNewEntry)) { _ in
             selectedDate = nil
             selection = .today
         }
-        .onReceive(NotificationCenter.default.publisher(for: .nootSelectTab)) { note in
+        .onReceive(NotificationCenter.default.publisher(for: .melatiSelectTab)) { note in
             if let tab = note.object as? NavTab {
                 selectedDate = nil
                 selection = tab
