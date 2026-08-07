@@ -1,14 +1,14 @@
 #!/usr/bin/env swift
 //
-// Re-authorize the Noot DB key for the team-signed build (2026-08).
+// Re-authorize the Melati DB key for the team-signed build (2026-08).
 //
-// Why: the diary key was created by the ad-hoc-signed Noot. After switching to
+// Why: the diary key was created by the ad-hoc-signed Melati. After switching to
 // team signing (6VG5LWYXK5) the new binary has a different code signature and
 // cannot silently read the old Keychain item. Rewriting the item outside the
 // app (this script) resets its ownership; the signed app then triggers a
 // one-time macOS prompt - click "Always Allow".
 //
-// Run once, with Noot NOT running, BEFORE launching the signed build:
+// Run once, with Melati NOT running, BEFORE launching the signed build:
 //   swift mac/scripts/reauth-keychain-signed.swift
 //
 // Does NOT touch journal.db. Aborts if the key looks wrong. Idempotent.
@@ -16,7 +16,7 @@
 import Foundation
 import Security
 
-let SERVICE = "com.lennertjansen.noot"
+let SERVICE = "com.lennertjansen.melati"
 let ACCOUNT = "primary-database-key"
 
 func log(_ s: String) { print("→ \(s)") }
@@ -70,4 +70,4 @@ guard addStatus == errSecSuccess else {
 }
 ok("item rewritten")
 
-print("\ndone - launch the signed Noot.app and click \"Always Allow\" when prompted")
+print("\ndone - launch the signed Melati.app and click \"Always Allow\" when prompted")

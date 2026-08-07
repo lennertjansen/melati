@@ -1,4 +1,4 @@
-# 🌰 Noot
+# 🌼 Melati
 
 Private daily journaling for macOS and iOS.
 
@@ -10,8 +10,8 @@ Requires macOS 14+, Xcode 15+, [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
 ```sh
 cd apple/editor-embed && npm i && npm run build   # build embedded editor
-cd .. && xcodegen                                # regenerate Noot.xcodeproj
-open Noot.xcodeproj                              # build & run
+cd .. && xcodegen                                # regenerate Melati.xcodeproj
+open Melati.xcodeproj                              # build & run
 ```
 
 Lint (Biome, covers `apple/editor-embed`):
