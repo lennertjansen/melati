@@ -127,8 +127,8 @@ struct TodayView: View {
                 newBuffer = String(fresh.content.dropLast(previousPersisted.count)) + buffer
             } else {
                 // Live keystrokes are newer than anything in the store:
-                // unseen content goes above.
-                newBuffer = EntryMerge.stack(older: fresh.content, newer: buffer)
+                // unseen content goes above, shared prefix not duplicated.
+                newBuffer = EntryMerge.mergeOrdered(older: fresh.content, newer: buffer)
             }
             persistedContent = fresh.content
             persistedLocation = fresh.location

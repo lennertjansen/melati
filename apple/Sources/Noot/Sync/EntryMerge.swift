@@ -25,19 +25,45 @@ enum EntryMerge {
         return top + "\n\n" + bottom
     }
 
-    /// Order two forked versions by stamp (older first) and stack them.
+    /// Order two forked versions by stamp (older first) and merge.
     /// Equal stamps order by content so both devices still agree.
     static func merge(aContent: String, aStamp: String, bContent: String, bStamp: String) -> String {
         switch SyncReconciler.compare(aStamp, bStamp) {
         case .orderedAscending:
-            return stack(older: aContent, newer: bContent)
+            return mergeOrdered(older: aContent, newer: bContent)
         case .orderedDescending:
-            return stack(older: bContent, newer: aContent)
+            return mergeOrdered(older: bContent, newer: aContent)
         case .orderedSame:
             return aContent <= bContent
-                ? stack(older: aContent, newer: bContent)
-                : stack(older: bContent, newer: aContent)
+                ? mergeOrdered(older: aContent, newer: bContent)
+                : mergeOrdered(older: bContent, newer: aContent)
         }
+    }
+
+    /// Prefix-aware merge: when both forks extend a shared base (the common
+    /// diary pattern - both devices appended to the same day), the shared
+    /// prefix is NOT duplicated. The older version is kept verbatim; only
+    /// the newer fork's novel tail is appended below. Containment guards
+    /// make repeated encounters converge: re-merging either source against
+    /// the result returns the result unchanged.
+    static func mergeOrdered(older: String, newer: String) -> String {
+        let (olderTail, newerTail) = divergingTails(older, newer)
+        if contains(older, newerTail) { return older }
+        if contains(newer, olderTail) { return newer }
+        return stack(older: older, newer: newerTail)
+    }
+
+    /// Split both versions at their longest common line prefix and return
+    /// what remains of each. Line-based: markdown structure stays intact.
+    private static func divergingTails(_ a: String, _ b: String) -> (aTail: String, bTail: String) {
+        let al = a.components(separatedBy: "\n")
+        let bl = b.components(separatedBy: "\n")
+        var i = 0
+        while i < al.count, i < bl.count, al[i] == bl[i] { i += 1 }
+        return (
+            al[i...].joined(separator: "\n"),
+            bl[i...].joined(separator: "\n")
+        )
     }
 
     /// Strip blank edges only - leading newlines and trailing whitespace.
