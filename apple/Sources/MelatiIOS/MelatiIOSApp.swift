@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 @main
-struct NootIOSApp: App {
+struct MelatiIOSApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {

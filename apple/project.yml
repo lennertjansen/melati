@@ -1,4 +1,4 @@
-name: Noot
+name: Melati
 options:
   bundleIdPrefix: com.lennertjansen
   deploymentTarget:
@@ -8,8 +8,8 @@ options:
   generateEmptyDirectories: true
   developmentLanguage: en
 fileGroups:
-  - Sources/Noot/Resources/en.lproj
-  - Sources/Noot/Resources/nl.lproj
+  - Sources/Melati/Resources/en.lproj
+  - Sources/Melati/Resources/nl.lproj
 
 settings:
   base:
@@ -20,28 +20,28 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
 
 schemes:
-  Noot:
+  Melati:
     build:
       targets:
-        Noot: all
-        NootTests: [test]
+        Melati: all
+        MelatiTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - NootTests
-  NootIOS:
+        - MelatiTests
+  MelatiIOS:
     build:
       targets:
-        NootIOS: all
-        NootIOSTests: [test]
+        MelatiIOS: all
+        MelatiIOSTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - NootIOSTests
+        - MelatiIOSTests
 
 packages:
   SwiftSQLCipher:
@@ -49,15 +49,15 @@ packages:
     from: "1.9.0"
 
 targets:
-  Noot:
+  Melati:
     type: application
     platform: macOS
     sources:
-      - path: Sources/Noot
-      - path: Sources/NootMac
+      - path: Sources/Melati
+      - path: Sources/MelatiMac
         excludes:
           - "Info.plist"
-          - "Noot.entitlements"
+          - "Melati.entitlements"
       - path: Resources
         excludes:
           - "editor"
@@ -67,16 +67,16 @@ targets:
       - package: SwiftSQLCipher
         product: SQLiteDB
     info:
-      path: Sources/NootMac/Info.plist
+      path: Sources/MelatiMac/Info.plist
       properties:
-        CFBundleDisplayName: Noot
+        CFBundleDisplayName: Melati
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
         NSHumanReadableCopyright: ""
         ATSApplicationFontsPath: .
     entitlements:
-      path: Sources/NootMac/Noot.entitlements
+      path: Sources/MelatiMac/Melati.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
@@ -101,15 +101,15 @@ targets:
         SWIFT_EMIT_LOC_STRINGS: YES
         ENABLE_HARDENED_RUNTIME: YES
 
-  NootIOS:
+  MelatiIOS:
     type: application
     platform: iOS
     sources:
-      - path: Sources/Noot
-      - path: Sources/NootIOS
+      - path: Sources/Melati
+      - path: Sources/MelatiIOS
         excludes:
           - "Info.plist"
-          - "NootIOS.entitlements"
+          - "MelatiIOS.entitlements"
       - path: Resources
         excludes:
           - "editor"
@@ -119,9 +119,9 @@ targets:
       - package: SwiftSQLCipher
         product: SQLiteDB
     info:
-      path: Sources/NootIOS/Info.plist
+      path: Sources/MelatiIOS/Info.plist
       properties:
-        CFBundleDisplayName: Noot
+        CFBundleDisplayName: Melati
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
@@ -138,7 +138,7 @@ targets:
         UIBackgroundModes:
           - remote-notification
     entitlements:
-      path: Sources/NootIOS/NootIOS.entitlements
+      path: Sources/MelatiIOS/MelatiIOS.entitlements
       properties:
         com.apple.developer.icloud-services: [CloudKit]
         com.apple.developer.icloud-container-identifiers:
@@ -149,7 +149,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lennertjansen.melati
-        PRODUCT_NAME: Noot
+        PRODUCT_NAME: Melati
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -160,12 +160,12 @@ targets:
   # Hostless on purpose: a TEST_HOST launches the real app, which opens the
   # real diary DB and triggers keychain auth dialogs (hangs headless/CI runs).
   # Shared sources compile directly into the test bundle instead.
-  NootTests:
+  MelatiTests:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - path: Tests/NootTests
-      - path: Sources/Noot
+      - path: Tests/MelatiTests
+      - path: Sources/Melati
     dependencies:
       - package: SwiftSQLCipher
         product: SQLiteDB
@@ -175,12 +175,12 @@ targets:
 
   # Same test sources, iOS simulator: shared code (SQLCipher, sync logic,
   # policies) verified on the platform it actually ships on.
-  NootIOSTests:
+  MelatiIOSTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: Tests/NootTests
-      - path: Sources/Noot
+      - path: Tests/MelatiTests
+      - path: Sources/Melati
     dependencies:
       - package: SwiftSQLCipher
         product: SQLiteDB
