@@ -1,31 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- Melati app icon - v4 "walnut" (legacy Noot artwork; melati redesign is a separate decision)
-       Minimalist outline walnut.
-       Background: app dark-mode coal #1A1915.
-       Lines: app light-mode cream #F5EEDC.
+  <!-- Melati app icon - concept v5 #2 "charcoal + navy underlay" (chosen 2026-08-07).
+       Jasmine (melati) pinwheel: cream flower over a rotated navy under-layer,
+       gold center, charcoal ground.
+       SVG is the source of truth forever; later refinement path is Apple's
+       Icon Composer (Xcode 26): import layers (flower / underlay / ground)
+       for the light-dark-tinted Liquid Glass variants.
        Apple icon grid: 824x824 squircle centered, 100px margins. -->
 
-  <rect x="100" y="100" width="824" height="824" rx="186" ry="186" fill="#1A1915"/>
+  <defs>
+    <path id="petal" d="M 0 -9 C -17 -13 -27 -34 -15 -47 C -7 -56 6 -54 10 -43 C 14 -29 9 -13 0 -9 Z"/>
+    <g id="flower">
+      <use href="#petal"/>
+      <use href="#petal" transform="rotate(72)"/>
+      <use href="#petal" transform="rotate(144)"/>
+      <use href="#petal" transform="rotate(216)"/>
+      <use href="#petal" transform="rotate(288)"/>
+    </g>
+  </defs>
 
-  <g fill="none" stroke="#F5EEDC" stroke-linecap="round" stroke-linejoin="round">
-    <!-- outer shell: broad and round with a distinct pointed apex (cusp at top) -->
-    <path stroke-width="30" d="
-      M 512 296
-      C 480 330, 400 322, 352 386
-      C 306 448, 296 548, 326 630
-      C 358 716, 434 768, 512 768
-      C 590 768, 666 716, 698 630
-      C 728 548, 718 448, 672 386
-      C 624 322, 544 330, 512 296 Z"/>
+  <rect x="100" y="100" width="824" height="824" rx="186" ry="186" fill="#1C1C21"/>
 
-    <!-- central seam, wavering -->
-    <path stroke-width="20" d="M 512 318 C 496 400, 524 480, 506 560 C 492 630, 516 700, 510 754"/>
-
-    <!-- wrinkles: wavy, asymmetric, one per half plus a short one -->
-    <path stroke-width="20" d="M 436 372 C 396 428, 428 490, 398 552 C 372 606, 402 668, 428 708"/>
-    <path stroke-width="20" d="M 592 372 C 636 424, 604 492, 632 556 C 656 612, 622 672, 592 710"/>
-    <path stroke-width="20" d="M 566 430 C 588 480, 570 540, 584 596"/>
-    <path stroke-width="20" d="M 452 452 C 436 502, 456 560, 442 614"/>
+  <g transform="translate(512,512) scale(5.311)">
+    <!-- occluded pinwheel under-layer -->
+    <g fill="#2E4A68" transform="rotate(-9) scale(1.035)">
+      <use href="#flower"/>
+    </g>
+    <g fill="#F5F3EE">
+      <use href="#flower"/>
+    </g>
   </g>
+  <circle cx="512" cy="512" r="33.8" fill="#E4C57C"/>
 </svg>

@@ -2,19 +2,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="100 100 824 824">
   <!-- iOS app icon: full-bleed crop of the mac squircle artwork (melati.svg).
        iOS applies its own mask, so no rounded corners or margins here.
-       Keep the walnut geometry in sync with melati.svg. -->
-  <rect x="100" y="100" width="824" height="824" fill="#1A1915"/>
-  <g fill="none" stroke="#F5EEDC" stroke-linecap="round" stroke-linejoin="round">
-    <path stroke-width="30" d="
-      M 512 296
-      C 480 330, 400 322, 352 386
-      C 306 448, 296 548, 326 630
-      C 358 716, 434 768, 512 768
-      C 590 768, 666 716, 698 630
-      C 728 548, 718 448, 672 386
-      C 624 322, 544 330, 512 296 Z"/>
-    <path stroke-width="20" d="M 512 318 C 496 400, 524 480, 506 560 C 492 630, 516 700, 510 754"/>
-    <path stroke-width="20" d="M 436 372 C 396 428, 428 490, 398 552 C 372 606, 402 668, 428 708"/>
-    <path stroke-width="20" d="M 592 372 C 636 424, 604 492, 632 556 C 656 612, 622 672, 592 710"/>
+       Keep the flower geometry in sync with melati.svg. -->
+  <defs>
+    <path id="petal" d="M 0 -9 C -17 -13 -27 -34 -15 -47 C -7 -56 6 -54 10 -43 C 14 -29 9 -13 0 -9 Z"/>
+    <g id="flower">
+      <use href="#petal"/>
+      <use href="#petal" transform="rotate(72)"/>
+      <use href="#petal" transform="rotate(144)"/>
+      <use href="#petal" transform="rotate(216)"/>
+      <use href="#petal" transform="rotate(288)"/>
+    </g>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" fill="#1C1C21"/>
+
+  <g transform="translate(512,512) scale(5.311)">
+    <g fill="#2E4A68" transform="rotate(-9) scale(1.035)">
+      <use href="#flower"/>
+    </g>
+    <g fill="#F5F3EE">
+      <use href="#flower"/>
+    </g>
   </g>
+  <circle cx="512" cy="512" r="33.8" fill="#E4C57C"/>
 </svg>
