@@ -1,6 +1,6 @@
 # 🌼 Melati
 
-Private daily journaling I made for myself. Built for macOS and iOS.
+Private daily journaling I made for me and my gf. Built for macOS and iOS.
 
 Native SwiftUI app. [SQLCipher](https://github.com/sqlcipher/sqlcipher)-encrypted entries with the key in Keychain. [TipTap](https://github.com/ueberdosis/tiptap) editor is bundled as a single-file HTML page (`apple/editor-embed`) and hosted in a `WKWebView`.
 
