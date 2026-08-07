@@ -1,0 +1,189 @@
+import SwiftUI
+import WebKit
+#if os(macOS)
+import AppKit
+private typealias PlatformViewRepresentable = NSViewRepresentable
+#else
+import UIKit
+private typealias PlatformViewRepresentable = UIViewRepresentable
+#endif
+
+/// Native handle into the webview editor: focus state for the iOS accessory
+/// toolbar, formatting commands for its buttons. Inert on macOS (menu bar +
+/// keyboard shortcuts cover formatting there).
+@MainActor
+@Observable
+final class EditorController {
+    var isFocused = false
+    weak var webView: WKWebView?
+
+    func exec(_ command: String) {
+        webView?.evaluateJavaScript("window.melatiExec && window.melatiExec('\(command)')", completionHandler: nil)
+    }
+
+    func done() {
+        webView?.evaluateJavaScript("window.melatiBlur && window.melatiBlur()", completionHandler: nil)
+        #if os(iOS)
+        webView?.endEditing(true)
+        #endif
+    }
+}
+
+struct MarkdownEditor: PlatformViewRepresentable {
+    @Binding var text: String
+    var readOnly: Bool = false
+    var colorScheme: ColorScheme = .light
+    var controller: EditorController? = nil
+    var onTextChange: (() -> Void)?
+    var onBlur: (() -> Void)?
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    #if os(macOS)
+    func makeNSView(context: Context) -> WKWebView { makeWebView(context: context) }
+    func updateNSView(_ webView: WKWebView, context: Context) { update(webView, context: context) }
+    #else
+    func makeUIView(context: Context) -> WKWebView { makeWebView(context: context) }
+    func updateUIView(_ webView: WKWebView, context: Context) { update(webView, context: context) }
+    #endif
+
+    private func makeWebView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        let userContent = WKUserContentController()
+        userContent.add(context.coordinator, name: "melati")
+        config.userContentController = userContent
+        config.allowsInlinePredictions = false
+        #if os(macOS)
+        // Private KVC key; macOS-only. On iOS this raises NSUnknownKeyException.
+        config.preferences.setValue(true, forKey: "developerExtrasEnabled")
+        #endif
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        #if os(macOS)
+        // Private KVC key; the documented iOS equivalents are below.
+        webView.setValue(false, forKey: "drawsBackground")
+        #else
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        webView.scrollView.keyboardDismissMode = .interactive
+        webView.isInspectable = true
+        #endif
+        webView.navigationDelegate = context.coordinator
+        webView.uiDelegate = context.coordinator
+        context.coordinator.webView = webView
+        controller?.webView = webView
+
+        if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "editor")
+            ?? Bundle.main.url(forResource: "editor/index", withExtension: "html") {
+            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        }
+
+        return webView
+    }
+
+    private func update(_ webView: WKWebView, context: Context) {
+        context.coordinator.parent = self
+        context.coordinator.applyPendingState()
+    }
+
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
+        var parent: MarkdownEditor
+        weak var webView: WKWebView?
+        private var ready = false
+        private var lastSentText: String = ""
+        private var lastSentReadOnly: Bool?
+        private var lastSentTheme: ColorScheme?
+
+        init(_ parent: MarkdownEditor) {
+            self.parent = parent
+        }
+
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
+            switch type {
+            case "ready":
+                _log("[melati.editor] ready")
+                ready = true
+                applyPendingState()
+            case "change":
+                let md = body["md"] as? String ?? ""
+                lastSentText = md
+                if parent.text != md {
+                    Task { @MainActor in
+                        parent.text = md
+                        parent.onTextChange?()
+                    }
+                }
+            case "focus":
+                Task { @MainActor in parent.controller?.isFocused = true }
+            case "blur":
+                Task { @MainActor in
+                    parent.controller?.isFocused = false
+                    parent.onBlur?()
+                }
+            case "error":
+                _log("[melati.editor.error] %@:%@:%@ — %@", String(describing: body["source"] ?? ""), String(describing: body["line"] ?? ""), String(describing: body["col"] ?? ""), String(describing: body["message"] ?? ""))
+            case "log":
+                let level = body["level"] as? String ?? "log"
+                let args = (body["args"] as? [String])?.joined(separator: " ") ?? ""
+                _log("[melati.editor.%@] %@", level, args)
+            default:
+                break
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            _log("[melati.editor] webview didFinish")
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            _log("[melati.editor] webview didFailProvisional %@", error.localizedDescription)
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            _log("[melati.editor] webview didFail %@", error.localizedDescription)
+        }
+
+        func applyPendingState() {
+            guard ready, let webView else { return }
+            if parent.text != lastSentText {
+                lastSentText = parent.text
+                let escaped = jsonEscape(parent.text)
+                webView.evaluateJavaScript("window.melatiSetContent && window.melatiSetContent(\(escaped))", completionHandler: nil)
+            }
+            if lastSentReadOnly != parent.readOnly {
+                lastSentReadOnly = parent.readOnly
+                webView.evaluateJavaScript("window.melatiSetReadOnly && window.melatiSetReadOnly(\(parent.readOnly ? "true" : "false"))", completionHandler: nil)
+            }
+            if lastSentTheme != parent.colorScheme {
+                lastSentTheme = parent.colorScheme
+                let theme = parent.colorScheme == .dark ? "dark" : "light"
+                webView.evaluateJavaScript("window.melatiSetTheme && window.melatiSetTheme('\(theme)')", completionHandler: nil)
+            }
+        }
+
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            // Only allow file:// loads of our bundled editor; block everything else.
+            if let url = navigationAction.request.url, url.isFileURL {
+                decisionHandler(.allow)
+            } else {
+                decisionHandler(.cancel)
+            }
+        }
+    }
+}
+
+private func _log(_ format: String, _ args: CVarArg...) {
+    let msg = String(format: format, arguments: args)
+    print(msg)
+    fflush(stdout)
+}
+
+private func jsonEscape(_ s: String) -> String {
+    let data = (try? JSONSerialization.data(withJSONObject: [s], options: [.fragmentsAllowed])) ?? Data("[\"\"]".utf8)
+    let str = String(data: data, encoding: .utf8) ?? "[\"\"]"
+    return String(str.dropFirst().dropLast())
+}

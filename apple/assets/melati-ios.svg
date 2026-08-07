@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 100 824 824">
+  <!-- iOS app icon: full-bleed crop of the mac squircle artwork (melati.svg).
+       iOS applies its own mask, so no rounded corners or margins here.
+       Keep the flower geometry in sync with melati.svg. -->
+  <defs>
+    <path id="petal" d="M 0 -9 C -17 -13 -27 -34 -15 -47 C -7 -56 6 -54 10 -43 C 14 -29 9 -13 0 -9 Z"/>
+    <g id="flower">
+      <use href="#petal"/>
+      <use href="#petal" transform="rotate(72)"/>
+      <use href="#petal" transform="rotate(144)"/>
+      <use href="#petal" transform="rotate(216)"/>
+      <use href="#petal" transform="rotate(288)"/>
+    </g>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" fill="#1C1C21"/>
+
+  <g transform="translate(512,512) scale(5.311)">
+    <g fill="#2E4A68" transform="rotate(-9) scale(1.035)">
+      <use href="#flower"/>
+    </g>
+    <g fill="#F5F3EE">
+      <use href="#flower"/>
+    </g>
+  </g>
+  <circle cx="512" cy="512" r="33.8" fill="#E4C57C"/>
+</svg>

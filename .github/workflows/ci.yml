@@ -32,7 +32,7 @@ jobs:
         # iCloud entitlements landed, even ad-hoc signing demands a
         # provisioning profile. Tests are hostless - nothing launches the app.
         run: |
-          xcodebuild -project Noot.xcodeproj -scheme Noot \
+          xcodebuild -project Melati.xcodeproj -scheme Melati \
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO \
             test | tail -100
@@ -65,7 +65,7 @@ jobs:
           UDID=$(xcrun simctl list devices available -j \
             | jq -r '[.devices[] | .[] | select(.name | startswith("iPhone"))][0].udid')
           echo "Using simulator $UDID"
-          xcodebuild -project Noot.xcodeproj -scheme NootIOS \
+          xcodebuild -project Melati.xcodeproj -scheme MelatiIOS \
             -destination "platform=iOS Simulator,id=$UDID" \
             CODE_SIGNING_ALLOWED=NO \
             test | tail -100
