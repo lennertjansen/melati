@@ -1,4 +1,4 @@
-# 🌼 Melati
+# 🌸 Melati
 
 Private daily journaling I made for me and my gf. Built for macOS and iOS.
 
