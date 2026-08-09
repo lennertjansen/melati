@@ -5,6 +5,11 @@ struct CalendarView: View {
 
     let onSelectDate: (String) -> Void
 
+    // Privacy: hide entry text under each day so opening the calendar doesn't
+    // reveal what you wrote. Shared with the entries list; toggled in the View
+    // menu. Defaults on (previous behavior).
+    @AppStorage("melati.showPreviews") private var showPreviews: Bool = true
+
     @State private var year: Int = Calendar.current.component(.year, from: Date())
     @State private var month: Int = Calendar.current.component(.month, from: Date())
     @State private var summariesByDate: [String: EntrySummary] = [:]
@@ -115,7 +120,7 @@ struct CalendarView: View {
                 }
                 .frame(width: 22, height: 22)
 
-                if let summary, !summary.preview.isEmpty {
+                if showPreviews, let summary, !summary.preview.isEmpty {
                     Text(summary.preview)
                         .font(.lora(size: 11))
                         .foregroundStyle(Color("ForegroundSubtle"))

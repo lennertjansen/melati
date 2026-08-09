@@ -6,6 +6,7 @@ struct EntriesListView: View {
     let onSelectDate: (String) -> Void
 
     @AppStorage("melati.listGrouping") private var groupingRaw: String = "flat"
+    @AppStorage("melati.showPreviews") private var showPreviews: Bool = true
     @State private var summaries: [EntrySummary] = []
     @State private var loaded: Bool = false
 
@@ -111,7 +112,7 @@ struct EntriesListView: View {
                     }
                     Spacer()
                 }
-                if !summary.preview.isEmpty {
+                if showPreviews, !summary.preview.isEmpty {
                     Text(summary.preview)
                         .font(.lora(size: 14))
                         .foregroundStyle(Color("ForegroundSubtle"))
