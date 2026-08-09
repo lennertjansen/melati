@@ -12,8 +12,51 @@ final class AppEnvironment {
     /// Quiet UI surface: .off until sync starts (kill switch / no account).
     private(set) var syncStatus: SyncStatus = .off
 
+    /// True when running against a MELATI_TEST_DB_DIR database; sync never
+    /// starts in this mode.
+    private(set) var isTestMode = false
+
+    #if DEBUG
+    /// Fixed throwaway key for MELATI_TEST_DB_DIR databases so UI tests can
+    /// seed the same DB from outside the app. Worthless for real data.
+    static let testModeKey = Data(repeating: 0xA5, count: 32)
+    #endif
+
     private init() {
         do {
+            #if DEBUG
+            // E2E seam (same pattern as scripts/migrate-from-noot.swift's
+            // MIGRATE_* vars): isolated DB + fixed throwaway key. The real
+            // diary DB and the keychain are never touched. The dir must be
+            // inside the app's sandbox container.
+            if let dir = ProcessInfo.processInfo.environment["MELATI_TEST_DB_DIR"] {
+                print("!!! MELATI TEST MODE !!! isolated DB in \(dir) - sync disabled")
+                isTestMode = true
+                try FileManager.default.createDirectory(
+                    at: URL(fileURLWithPath: dir), withIntermediateDirectories: true)
+                let url = URL(fileURLWithPath: dir).appendingPathComponent("journal.db")
+                let store = try JournalStore(path: url.path, key: Self.testModeKey)
+                self.store = store
+                // Optional seed for manual E2E/screenshots: comma-separated
+                // yyyy-MM-dd keys, seeded only if that date has no row yet.
+                if let seed = ProcessInfo.processInfo.environment["MELATI_TEST_SEED"] {
+                    let dates = seed
+                        .split(separator: ",")
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                    Task {
+                        for date in dates where (try? await store.get(date: date)) ?? nil == nil {
+                            try? await store.put(JournalEntry(
+                                date: date,
+                                content: "Seed entry for \(date).\nSecond line here.",
+                                createdAt: Date(),
+                                location: nil))
+                        }
+                    }
+                }
+                return
+            }
+            #endif
             let key = try KeyStore.default.loadOrCreate()
             let url = try JournalStore.defaultDatabaseURL()
             self.store = try JournalStore(path: url.path, key: key)
@@ -26,7 +69,7 @@ final class AppEnvironment {
     /// setup must never block or kill launch. No-ops without an iCloud
     /// account (app stays fully local) or when the kill switch is off.
     func startSyncIfAvailable() {
-        guard SyncSettings.isEnabled, sync == nil else { return }
+        guard !isTestMode, SyncSettings.isEnabled, sync == nil else { return }
         Task {
             #if DEBUG
             // Repair hook: launch with `-melati.resetSyncState YES` to forget

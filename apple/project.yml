@@ -42,6 +42,18 @@ schemes:
       config: Debug
       targets:
         - MelatiIOSTests
+  # Separate scheme on purpose: UI tests launch the real (signed) app, which
+  # CI cannot do (CODE_SIGNING_ALLOWED=NO). Local-only, run explicitly.
+  MelatiUITests:
+    build:
+      targets:
+        MelatiUITests: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MelatiUITests
 
 packages:
   SwiftSQLCipher:
@@ -167,6 +179,24 @@ targets:
       - path: Tests/MelatiTests
       - path: Sources/Melati
     dependencies:
+      - package: SwiftSQLCipher
+        product: SQLiteDB
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
+  # GUI-driving E2E tests against the real app on an isolated DB (the
+  # MELATI_TEST_DB_DIR seam - real diary + keychain never touched). Compiles
+  # Sources/Melati so the runner can seed the test DB through JournalStore.
+  # Not in the Melati scheme: launching the app needs signing, so local-only.
+  MelatiUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: Tests/MelatiUITests
+      - path: Sources/Melati
+    dependencies:
+      - target: Melati
       - package: SwiftSQLCipher
         product: SQLiteDB
     settings:
