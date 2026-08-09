@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct MelatiApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @AppStorage("melati.showPreviews") private var showPreviews: Bool = true
+    @AppStorage("melati.showPreviews") private var showPreviews: Bool = false
 
     init() {
         FontRegistry.registerBundledFonts()

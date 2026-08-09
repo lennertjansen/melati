@@ -5,10 +5,11 @@ struct CalendarView: View {
 
     let onSelectDate: (String) -> Void
 
-    // Privacy: hide entry text under each day so opening the calendar doesn't
-    // reveal what you wrote. Shared with the entries list; toggled in the View
-    // menu. Defaults on (previous behavior).
-    @AppStorage("melati.showPreviews") private var showPreviews: Bool = true
+    // Privacy: entry text stays hidden unless previews are opted into, so
+    // opening the calendar never reveals what you wrote. One global setting,
+    // shared with the entries list; toggled by the eye button here or the
+    // View menu (shift-cmd-P).
+    @AppStorage("melati.showPreviews") private var showPreviews: Bool = false
 
     @State private var year: Int = Calendar.current.component(.year, from: Date())
     @State private var month: Int = Calendar.current.component(.month, from: Date())
@@ -66,6 +67,17 @@ struct CalendarView: View {
             .accessibilityIdentifier("cal.nextMonth")
 
             Spacer()
+
+            Button {
+                showPreviews.toggle()
+            } label: {
+                Image(systemName: showPreviews ? "eye" : "eye.slash")
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(String(localized: showPreviews ? "previews.hide" : "previews.show")))
+            .accessibilityIdentifier("cal.previews")
         }
         .foregroundStyle(Color("ForegroundSubtle"))
     }
