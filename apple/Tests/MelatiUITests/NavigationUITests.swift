@@ -68,22 +68,29 @@ final class NavigationUITests: XCTestCase {
                       "back chevron did not dismiss the entry")
     }
 
-    /// Clicking the CURRENT tab in the sidebar must also leave the detail
-    /// view. Pre-fix it was a no-op (selection unchanged -> onChange never
-    /// fired -> selectedDate never cleared) and the user was stuck.
-    func testSidebarCurrentTabClickLeavesDetail() {
+    /// DECIDED (Lennert, 2026-08-11): while an entry is open the sidebar
+    /// stays fully hidden - the edge hover is disabled so it can never cover
+    /// the back chevron. Leaving the entry re-enables it.
+    func testSidebarHiddenWhileReadingEntry() {
         openCalendarCell(seededPast[1])
         assertDetailShown(seededPast[1])
 
-        // Hover the left edge to summon the sidebar, like a user would.
         let window = app.windows.firstMatch
-        window.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5)).hover()
         let calRow = app.buttons["sidebar.calendar"]
-        XCTAssertTrue(calRow.waitForExistence(timeout: 2), "sidebar did not appear on edge hover")
-        calRow.click()
 
-        XCTAssertTrue(element("cal.day.\(today)").waitForExistence(timeout: 3),
-                      "clicking the current tab in the sidebar left the user stuck on the entry")
+        // Edge hover must do nothing during an entry.
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5)).hover()
+        XCTAssertFalse(calRow.waitForExistence(timeout: 1.5),
+                       "sidebar appeared over an open entry - it must stay hidden")
+        XCTAssertTrue(element("editor.readonly").exists, "entry view was disturbed by edge hover")
+
+        // Back out; the edge trigger works again on the calendar.
+        app.buttons["entry.back"].click()
+        XCTAssertTrue(element("cal.day.\(today)").waitForExistence(timeout: 3))
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).hover()
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5)).hover()
+        XCTAssertTrue(calRow.waitForExistence(timeout: 2),
+                      "sidebar did not appear on edge hover outside an entry")
     }
 
     // MARK: - Bug 2: today opened from Entries/Calendar must be editable
