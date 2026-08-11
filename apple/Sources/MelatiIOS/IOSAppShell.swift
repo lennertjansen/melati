@@ -50,6 +50,12 @@ struct IOSAppShell: View {
             guard new != nil else { return }
             Task { entryDates = (try? await env.store.listDates()) ?? [] }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .melatiEntriesChangedRemotely)) { _ in
+            // A sync while an entry is open changes what older/newer should
+            // step through; keep the navigation dates fresh.
+            guard selectedDate != nil else { return }
+            Task { entryDates = (try? await env.store.listDates()) ?? [] }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .melatiNewEntry)) { _ in
             selectedDate = nil
             selection = .today

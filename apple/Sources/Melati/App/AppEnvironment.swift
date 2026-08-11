@@ -39,20 +39,27 @@ final class AppEnvironment {
                 self.store = store
                 // Optional seed for manual E2E/screenshots: comma-separated
                 // yyyy-MM-dd keys, seeded only if that date has no row yet.
+                // Blocks init until every seed is persisted - views load from
+                // the store the moment init returns, so an async seed would
+                // race them (nondeterministic empty/partial first render).
+                // DEBUG-only launch path; the brief block is the point.
                 if let seed = ProcessInfo.processInfo.environment["MELATI_TEST_SEED"] {
                     let dates = seed
                         .split(separator: ",")
                         .map { $0.trimmingCharacters(in: .whitespaces) }
                         .filter { !$0.isEmpty }
-                    Task {
+                    let seeded = DispatchSemaphore(value: 0)
+                    Task.detached {
                         for date in dates where (try? await store.get(date: date)) ?? nil == nil {
                             try? await store.put(JournalEntry(
                                 date: date,
                                 content: "Seed entry for \(date).\nSecond line here.",
                                 createdAt: Date(),
-                                location: nil))
+                                location: "Seedville"))
                         }
+                        seeded.signal()
                     }
+                    seeded.wait()
                 }
                 return
             }

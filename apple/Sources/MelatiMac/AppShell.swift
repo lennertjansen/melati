@@ -31,7 +31,11 @@ struct AppShell: View {
                     }
             }
 
-            if sidebarVisible {
+            // Also gated on selectedDate: the sidebar must be structurally
+            // unable to overlay an open entry, not just usually hidden by the
+            // hover timer (it could otherwise linger over the back chevron for
+            // the hide-delay window when a row is opened mid-hover).
+            if sidebarVisible && selectedDate == nil {
                 CustomSidebar(selection: selection, onSelect: selectTab)
                     .frame(width: sidebarWidth)
                     .frame(maxHeight: .infinity)
@@ -56,6 +60,14 @@ struct AppShell: View {
         }
         .onChange(of: selectedDate) { _, new in
             guard new != nil else { return }
+            sidebarVisible = false
+            cancelHideTimer()
+            Task { entryDates = (try? await env.store.listDates()) ?? [] }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .melatiEntriesChangedRemotely)) { _ in
+            // A sync while an entry is open changes what older/newer should
+            // step through; keep the navigation dates fresh.
+            guard selectedDate != nil else { return }
             Task { entryDates = (try? await env.store.listDates()) ?? [] }
         }
         .onReceive(NotificationCenter.default.publisher(for: .melatiNewEntry)) { _ in
