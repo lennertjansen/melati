@@ -103,7 +103,9 @@ struct EntriesListView: View {
                     Text(DateUtil.formatRelativeDate(dateKey: summary.date))
                         .font(.lora(size: 16))
                         .foregroundStyle(Color("Foreground"))
-                    if let loc = summary.location, !loc.isEmpty {
+                    // Location is user-authored entry content and can be as
+                    // revealing as the body - same privacy gate as previews.
+                    if showPreviews, let loc = summary.location, !loc.isEmpty {
                         Text("·")
                             .foregroundStyle(Color("ForegroundSubtle"))
                         Text(loc)
