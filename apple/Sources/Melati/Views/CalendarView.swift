@@ -153,6 +153,9 @@ struct CalendarView: View {
         .disabled(!clickable)
         .opacity(day.isCurrentMonth ? 1.0 : 0.45)
         .accessibilityIdentifier("cal.day.\(day.dateKey)")
+        // Mirror the visible preview for VoiceOver; empty when previews are
+        // off (the privacy gate applies to assistive tech too).
+        .accessibilityValue(showPreviews ? (summary?.preview ?? "") : "")
     }
 
     private func prevMonth() {

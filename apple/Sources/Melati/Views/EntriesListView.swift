@@ -129,6 +129,16 @@ struct EntriesListView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("entries.row.\(summary.date)")
+        // SwiftUI's derived button label keeps only the date text; mirror the
+        // visible summary for VoiceOver. With previews off this stays empty -
+        // the privacy gate applies to assistive tech too.
+        .accessibilityValue(showPreviews ? visibleSummary(summary) : "")
+    }
+
+    private func visibleSummary(_ summary: EntrySummary) -> String {
+        [summary.location ?? "", summary.preview]
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
     }
 
     private struct MonthGroup {
