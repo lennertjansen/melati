@@ -2,7 +2,7 @@ import Foundation
 
 // Shared between the macOS and iOS shells: tab identity + app-wide events.
 
-enum NavTab: Hashable, CaseIterable {
+enum NavTab: String, Hashable, CaseIterable {
     case today, entries, calendar
 
     var labelKey: LocalizedStringResource {

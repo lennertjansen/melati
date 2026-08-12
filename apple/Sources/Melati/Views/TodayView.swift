@@ -4,6 +4,13 @@ struct TodayView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.colorScheme) private var colorScheme
 
+    // Chrome shown only when Today is browsed INTO (a selected date that
+    // happens to be today), so editing today's entry works no matter how the
+    // user got there. nil for the normal Today tab, which has no nav bar.
+    var onDismiss: (() -> Void)? = nil
+    var onPrev: (() -> Void)? = nil
+    var onNext: (() -> Void)? = nil
+
     @State private var content: String = ""
     @State private var existingCreatedAt: Date?
     @State private var existingLocation: String?
@@ -22,6 +29,9 @@ struct TodayView: View {
         ZStack {
             Color("Background").ignoresSafeArea()
             VStack(spacing: 0) {
+                if let onDismiss {
+                    EntryNavBar(onDismiss: onDismiss, onPrev: onPrev, onNext: onNext)
+                }
                 EntryHeader(
                     dateKey: dateKey,
                     createdAt: existingCreatedAt,
@@ -35,7 +45,7 @@ struct TodayView: View {
                         Task { await save() }
                     }
                 )
-                .padding(.top, 24)
+                .padding(.top, onDismiss == nil ? 24 : 12)
                 .padding(.bottom, 8)
                 if remoteUpdateNotice {
                     Text(String(localized: "today.remoteUpdate"))
@@ -53,6 +63,7 @@ struct TodayView: View {
                     onBlur: { Task { await save() } }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("editor.editable")
             }
         }
         .editorAccessoryBar(editorController)

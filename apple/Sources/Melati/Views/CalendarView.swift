@@ -45,6 +45,7 @@ struct CalendarView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text(String(localized: "cal.prev")))
+            .accessibilityIdentifier("cal.prevMonth")
 
             Text(DateUtil.formatMonthYear(year: year, month: month))
                 .font(.lora(size: 18))
@@ -57,6 +58,7 @@ struct CalendarView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text(String(localized: "cal.next")))
+            .accessibilityIdentifier("cal.nextMonth")
 
             Spacer()
         }
@@ -133,6 +135,7 @@ struct CalendarView: View {
         .buttonStyle(.plain)
         .disabled(!clickable)
         .opacity(day.isCurrentMonth ? 1.0 : 0.45)
+        .accessibilityIdentifier("cal.day.\(day.dateKey)")
     }
 
     private func prevMonth() {

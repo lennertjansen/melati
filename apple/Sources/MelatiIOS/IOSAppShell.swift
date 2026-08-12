@@ -50,6 +50,12 @@ struct IOSAppShell: View {
             guard new != nil else { return }
             Task { entryDates = (try? await env.store.listDates()) ?? [] }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .melatiEntriesChangedRemotely)) { _ in
+            // A sync while an entry is open changes what older/newer should
+            // step through; keep the navigation dates fresh.
+            guard selectedDate != nil else { return }
+            Task { entryDates = (try? await env.store.listDates()) ?? [] }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .melatiNewEntry)) { _ in
             selectedDate = nil
             selection = .today
@@ -69,28 +75,42 @@ struct IOSAppShell: View {
         ZStack {
             Color("Background").ignoresSafeArea()
             if let date = selectedDate {
-                let idx = entryDates.firstIndex(of: date)
-                EntryDetailView(
-                    dateKey: date,
-                    onDismiss: { selectedDate = nil },
-                    onPrev: olderDate(from: idx).map { older in { selectedDate = older } },
-                    onNext: newerDate(from: idx).map { newer in { selectedDate = newer } }
-                )
+                let idx = navDates.firstIndex(of: date)
+                let onDismiss = { selectedDate = nil }
+                let onPrev = olderDate(from: idx).map { older in { selectedDate = older } }
+                let onNext = newerDate(from: idx).map { newer in { selectedDate = newer } }
+                if date == DateUtil.todayKey() {
+                    TodayView(onDismiss: onDismiss, onPrev: onPrev, onNext: onNext)
+                } else {
+                    EntryDetailView(
+                        dateKey: date,
+                        onDismiss: onDismiss,
+                        onPrev: onPrev,
+                        onNext: onNext
+                    )
+                }
             } else {
                 content()
             }
         }
     }
 
+    /// Every entry plus today (always openable/editable). Newest-first.
+    private var navDates: [String] {
+        let today = DateUtil.todayKey()
+        guard !entryDates.contains(today) else { return entryDates }
+        return ([today] + entryDates).sorted(by: >)
+    }
+
     private func olderDate(from idx: Array<String>.Index?) -> String? {
         guard let idx else { return nil }
         let next = idx + 1
-        return entryDates.indices.contains(next) ? entryDates[next] : nil
+        return navDates.indices.contains(next) ? navDates[next] : nil
     }
 
     private func newerDate(from idx: Array<String>.Index?) -> String? {
         guard let idx else { return nil }
         let prev = idx - 1
-        return entryDates.indices.contains(prev) ? entryDates[prev] : nil
+        return navDates.indices.contains(prev) ? navDates[prev] : nil
     }
 }

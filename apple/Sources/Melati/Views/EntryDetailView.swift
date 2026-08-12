@@ -18,31 +18,7 @@ struct EntryDetailView: View {
         ZStack {
             Color("Background").ignoresSafeArea()
             VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    Button(action: onDismiss) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Color("ForegroundSubtle"))
-                            .frame(width: 28, height: 28)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .keyboardShortcut(.escape, modifiers: [])
-                    .accessibilityLabel(Text(String(localized: "back")))
-                    Spacer()
-                    #if os(iOS)
-                    // Touch has no arrow keys: visible prev/next. Mac keeps
-                    // its keyboard-only nav (buttons below).
-                    if let onPrev {
-                        navChevron("chevron.backward", action: onPrev, label: "entry.older")
-                    }
-                    if let onNext {
-                        navChevron("chevron.forward", action: onNext, label: "entry.newer")
-                    }
-                    #endif
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
+                EntryNavBar(onDismiss: onDismiss, onPrev: onPrev, onNext: onNext)
 
                 EntryHeader(
                     dateKey: dateKey,
@@ -55,6 +31,7 @@ struct EntryDetailView: View {
                 )
                 .padding(.top, 12)
                 .padding(.bottom, 8)
+                .accessibilityIdentifier("entry.header.\(dateKey)")
 
                 MarkdownEditor(
                     text: .constant(content),
@@ -62,22 +39,15 @@ struct EntryDetailView: View {
                     colorScheme: colorScheme
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("editor.readonly")
             }
         }
         .background(
-            Group {
-                Button(action: onDismiss) { EmptyView() }
-                    .keyboardShortcut("[", modifiers: [.command])
-                Button { onPrev?() } label: { EmptyView() }
-                    .keyboardShortcut(.leftArrow, modifiers: [])
-                    .disabled(onPrev == nil)
-                Button { onNext?() } label: { EmptyView() }
-                    .keyboardShortcut(.rightArrow, modifiers: [])
-                    .disabled(onNext == nil)
-            }
-            .opacity(0)
-            .frame(width: 0, height: 0)
-            .accessibilityHidden(true)
+            Button(action: onDismiss) { EmptyView() }
+                .keyboardShortcut("[", modifiers: [.command])
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
         )
         .task(id: dateKey) {
             await load()
@@ -106,20 +76,6 @@ struct EntryDetailView: View {
         )
         #endif
     }
-
-    #if os(iOS)
-    private func navChevron(_ systemImage: String, action: @escaping () -> Void, label: String.LocalizationValue) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color("ForegroundSubtle"))
-                .frame(width: 32, height: 28)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(String(localized: label)))
-    }
-    #endif
 
     private func load() async {
         do {

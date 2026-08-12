@@ -125,6 +125,7 @@ struct EntriesListView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("entries.row.\(summary.date)")
     }
 
     private struct MonthGroup {

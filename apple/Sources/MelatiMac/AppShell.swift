@@ -19,7 +19,9 @@ struct AppShell: View {
             detailContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if !sidebarVisible {
+            // No edge trigger while an entry is open: the sidebar would slide
+            // over the back chevron and trap the user (they use Back instead).
+            if !sidebarVisible && selectedDate == nil {
                 Color.clear
                     .frame(width: edgeTriggerWidth)
                     .frame(maxHeight: .infinity)
@@ -29,8 +31,12 @@ struct AppShell: View {
                     }
             }
 
-            if sidebarVisible {
-                CustomSidebar(selection: $selection)
+            // Also gated on selectedDate: the sidebar must be structurally
+            // unable to overlay an open entry, not just usually hidden by the
+            // hover timer (it could otherwise linger over the back chevron for
+            // the hide-delay window when a row is opened mid-hover).
+            if sidebarVisible && selectedDate == nil {
+                CustomSidebar(selection: selection, onSelect: selectTab)
                     .frame(width: sidebarWidth)
                     .frame(maxHeight: .infinity)
                     .background(
@@ -54,6 +60,14 @@ struct AppShell: View {
         }
         .onChange(of: selectedDate) { _, new in
             guard new != nil else { return }
+            sidebarVisible = false
+            cancelHideTimer()
+            Task { entryDates = (try? await env.store.listDates()) ?? [] }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .melatiEntriesChangedRemotely)) { _ in
+            // A sync while an entry is open changes what older/newer should
+            // step through; keep the navigation dates fresh.
+            guard selectedDate != nil else { return }
             Task { entryDates = (try? await env.store.listDates()) ?? [] }
         }
         .onReceive(NotificationCenter.default.publisher(for: .melatiNewEntry)) { _ in
@@ -68,16 +82,34 @@ struct AppShell: View {
         }
     }
 
+    /// Dates reachable by prev/next: every entry plus today (which is always
+    /// openable and editable even before it has a row). Sorted newest-first,
+    /// matching entryDates. Keeps flipping positional so gaps between entries
+    /// are skipped and a rowless today still navigates.
+    private var navDates: [String] {
+        let today = DateUtil.todayKey()
+        guard !entryDates.contains(today) else { return entryDates }
+        return ([today] + entryDates).sorted(by: >)
+    }
+
     @ViewBuilder
     private var detailContent: some View {
         if let date = selectedDate {
-            let idx = entryDates.firstIndex(of: date)
-            EntryDetailView(
-                dateKey: date,
-                onDismiss: { selectedDate = nil },
-                onPrev: olderDate(from: idx).map { older in { selectedDate = older } },
-                onNext: newerDate(from: idx).map { newer in { selectedDate = newer } }
-            )
+            let idx = navDates.firstIndex(of: date)
+            let onDismiss = { selectedDate = nil }
+            let onPrev = olderDate(from: idx).map { older in { selectedDate = older } }
+            let onNext = newerDate(from: idx).map { newer in { selectedDate = newer } }
+            // Today is always the editable surface, however it was reached.
+            if date == DateUtil.todayKey() {
+                TodayView(onDismiss: onDismiss, onPrev: onPrev, onNext: onNext)
+            } else {
+                EntryDetailView(
+                    dateKey: date,
+                    onDismiss: onDismiss,
+                    onPrev: onPrev,
+                    onNext: onNext
+                )
+            }
         } else {
             switch selection {
             case .today:
@@ -90,16 +122,24 @@ struct AppShell: View {
         }
     }
 
+    private func selectTab(_ tab: NavTab) {
+        // Always leave any open entry, even when the tab is unchanged (a plain
+        // `selection = tab` would be a no-op and strand the user on the entry).
+        selectedDate = nil
+        selection = tab
+        scheduleHide()
+    }
+
     private func olderDate(from idx: Array<String>.Index?) -> String? {
         guard let idx else { return nil }
         let next = idx + 1
-        return entryDates.indices.contains(next) ? entryDates[next] : nil
+        return navDates.indices.contains(next) ? navDates[next] : nil
     }
 
     private func newerDate(from idx: Array<String>.Index?) -> String? {
         guard let idx else { return nil }
         let prev = idx - 1
-        return entryDates.indices.contains(prev) ? entryDates[prev] : nil
+        return navDates.indices.contains(prev) ? navDates[prev] : nil
     }
 
     private func showSidebar() {
@@ -127,7 +167,8 @@ struct AppShell: View {
 }
 
 private struct CustomSidebar: View {
-    @Binding var selection: NavTab
+    let selection: NavTab
+    let onSelect: (NavTab) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -143,7 +184,7 @@ private struct CustomSidebar: View {
     private func row(_ tab: NavTab) -> some View {
         let isSelected = tab == selection
         return Button {
-            selection = tab
+            onSelect(tab)
         } label: {
             Text(String(localized: tab.labelKey))
                 .font(.lora(size: 15, weight: isSelected ? .bold : .regular))
@@ -158,5 +199,6 @@ private struct CustomSidebar: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("sidebar.\(tab.rawValue)")
     }
 }
