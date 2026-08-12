@@ -14,6 +14,9 @@
 "cmd.newEntry" = "New Entry";
 "cmd.focusLocation" = "Edit Location";
 "menu.view" = "View";
+"menu.showPreviews" = "Show Previews";
+"previews.show" = "Show previews";
+"previews.hide" = "Hide previews";
 "editor.done" = "Done";
 "entry.older" = "Older entry";
 "entry.newer" = "Newer entry";

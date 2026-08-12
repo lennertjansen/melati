@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct MelatiApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @AppStorage("melati.showPreviews") private var showPreviews: Bool = false
 
     init() {
         FontRegistry.registerBundledFonts()
@@ -35,6 +36,9 @@ struct MelatiApp: App {
                     NotificationCenter.default.post(name: .melatiSelectTab, object: NavTab.calendar)
                 }
                 .keyboardShortcut("3", modifiers: [.command])
+                Divider()
+                Toggle(String(localized: "menu.showPreviews"), isOn: $showPreviews)
+                    .keyboardShortcut("p", modifiers: [.command, .shift])
                 Divider()
                 Button(String(localized: "cmd.focusLocation")) {
                     NotificationCenter.default.post(name: .melatiFocusLocation, object: nil)

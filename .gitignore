@@ -39,5 +39,11 @@ Thumbs.db
 # Claude Code
 .claude/
 
+# Codex
+AGENTS.md
+AGENTS.override.md
+.codex/
+REVIEW.md
+
 # Playwright artifacts
 .playwright-mcp/

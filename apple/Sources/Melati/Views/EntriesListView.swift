@@ -6,6 +6,7 @@ struct EntriesListView: View {
     let onSelectDate: (String) -> Void
 
     @AppStorage("melati.listGrouping") private var groupingRaw: String = "flat"
+    @AppStorage("melati.showPreviews") private var showPreviews: Bool = false
     @State private var summaries: [EntrySummary] = []
     @State private var loaded: Bool = false
 
@@ -102,7 +103,9 @@ struct EntriesListView: View {
                     Text(DateUtil.formatRelativeDate(dateKey: summary.date))
                         .font(.lora(size: 16))
                         .foregroundStyle(Color("Foreground"))
-                    if let loc = summary.location, !loc.isEmpty {
+                    // Location is user-authored entry content and can be as
+                    // revealing as the body - same privacy gate as previews.
+                    if showPreviews, let loc = summary.location, !loc.isEmpty {
                         Text("·")
                             .foregroundStyle(Color("ForegroundSubtle"))
                         Text(loc)
@@ -111,7 +114,7 @@ struct EntriesListView: View {
                     }
                     Spacer()
                 }
-                if !summary.preview.isEmpty {
+                if showPreviews, !summary.preview.isEmpty {
                     Text(summary.preview)
                         .font(.lora(size: 14))
                         .foregroundStyle(Color("ForegroundSubtle"))
@@ -126,6 +129,16 @@ struct EntriesListView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("entries.row.\(summary.date)")
+        // SwiftUI's derived button label keeps only the date text; mirror the
+        // visible summary for VoiceOver. With previews off this stays empty -
+        // the privacy gate applies to assistive tech too.
+        .accessibilityValue(showPreviews ? visibleSummary(summary) : "")
+    }
+
+    private func visibleSummary(_ summary: EntrySummary) -> String {
+        [summary.location ?? "", summary.preview]
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
     }
 
     private struct MonthGroup {

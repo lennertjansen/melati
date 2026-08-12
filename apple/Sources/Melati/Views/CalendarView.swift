@@ -5,6 +5,12 @@ struct CalendarView: View {
 
     let onSelectDate: (String) -> Void
 
+    // Privacy: entry text stays hidden unless previews are opted into, so
+    // opening the calendar never reveals what you wrote. One global setting,
+    // shared with the entries list; toggled by the eye button here or the
+    // View menu (shift-cmd-P).
+    @AppStorage("melati.showPreviews") private var showPreviews: Bool = false
+
     @State private var year: Int = Calendar.current.component(.year, from: Date())
     @State private var month: Int = Calendar.current.component(.month, from: Date())
     @State private var summariesByDate: [String: EntrySummary] = [:]
@@ -61,6 +67,17 @@ struct CalendarView: View {
             .accessibilityIdentifier("cal.nextMonth")
 
             Spacer()
+
+            Button {
+                showPreviews.toggle()
+            } label: {
+                Image(systemName: showPreviews ? "eye" : "eye.slash")
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(String(localized: showPreviews ? "previews.hide" : "previews.show")))
+            .accessibilityIdentifier("cal.previews")
         }
         .foregroundStyle(Color("ForegroundSubtle"))
     }
@@ -115,7 +132,7 @@ struct CalendarView: View {
                 }
                 .frame(width: 22, height: 22)
 
-                if let summary, !summary.preview.isEmpty {
+                if showPreviews, let summary, !summary.preview.isEmpty {
                     Text(summary.preview)
                         .font(.lora(size: 11))
                         .foregroundStyle(Color("ForegroundSubtle"))
@@ -136,6 +153,9 @@ struct CalendarView: View {
         .disabled(!clickable)
         .opacity(day.isCurrentMonth ? 1.0 : 0.45)
         .accessibilityIdentifier("cal.day.\(day.dateKey)")
+        // Mirror the visible preview for VoiceOver; empty when previews are
+        // off (the privacy gate applies to assistive tech too).
+        .accessibilityValue(showPreviews ? (summary?.preview ?? "") : "")
     }
 
     private func prevMonth() {
