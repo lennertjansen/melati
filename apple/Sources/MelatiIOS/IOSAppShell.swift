@@ -69,16 +69,15 @@ struct IOSAppShell: View {
     }
 
     // Same detail model as the mac shell: a selected date replaces the tab's
-    // list content. Swipe-back arrives in C2; onDismiss covers it for now.
+    // list content. Swipe navigation lives in EntryDetailView.
     @ViewBuilder
     private func detailWrapped<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         ZStack {
             Color("Background").ignoresSafeArea()
             if let date = selectedDate {
-                let idx = navDates.firstIndex(of: date)
                 let onDismiss = { selectedDate = nil }
-                let onPrev = olderDate(from: idx).map { older in { selectedDate = older } }
-                let onNext = newerDate(from: idx).map { newer in { selectedDate = newer } }
+                let onPrev = nav.older(than: date).map { older in { selectedDate = older } }
+                let onNext = nav.newer(than: date).map { newer in { selectedDate = newer } }
                 if date == DateUtil.todayKey() {
                     TodayView(onDismiss: onDismiss, onPrev: onPrev, onNext: onNext)
                 } else {
@@ -95,22 +94,7 @@ struct IOSAppShell: View {
         }
     }
 
-    /// Every entry plus today (always openable/editable). Newest-first.
-    private var navDates: [String] {
-        let today = DateUtil.todayKey()
-        guard !entryDates.contains(today) else { return entryDates }
-        return ([today] + entryDates).sorted(by: >)
-    }
-
-    private func olderDate(from idx: Array<String>.Index?) -> String? {
-        guard let idx else { return nil }
-        let next = idx + 1
-        return navDates.indices.contains(next) ? navDates[next] : nil
-    }
-
-    private func newerDate(from idx: Array<String>.Index?) -> String? {
-        guard let idx else { return nil }
-        let prev = idx - 1
-        return navDates.indices.contains(prev) ? navDates[prev] : nil
+    private var nav: EntryNavigation {
+        EntryNavigation(entryDates: entryDates, todayKey: DateUtil.todayKey())
     }
 }
