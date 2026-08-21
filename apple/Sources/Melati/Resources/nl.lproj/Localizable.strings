@@ -4,8 +4,6 @@
 "back" = "Terug";
 "placeholder" = "Begin met schrijven…";
 "location" = "locatie";
-"list.flat" = "Plat";
-"list.grouped" = "Gegroepeerd";
 "list.empty" = "Nog geen notities";
 "cal.prev" = "Vorige maand";
 "cal.next" = "Volgende maand";
