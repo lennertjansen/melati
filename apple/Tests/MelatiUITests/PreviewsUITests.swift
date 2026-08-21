@@ -14,10 +14,6 @@ final class PreviewsUITests: XCTestCase {
     override func setUp() async throws {
         continueAfterFailure = false
 
-        // The toggle persists in the app's real preferences domain; remove it
-        // so every test starts from the true "missing preference" state.
-        Self.deletePreviewsPref()
-
         let base = NSHomeDirectory()
             + "/Library/Containers/com.lennertjansen.melati/Data/tmp"
         dbDir = base + "/melati-previews-e2e-" + UUID().uuidString
@@ -40,13 +36,19 @@ final class PreviewsUITests: XCTestCase {
 
         app = XCUIApplication()
         app.launchEnvironment["MELATI_TEST_DB_DIR"] = dbDir
+        // The toggle persists in the app's real preferences domain, and this
+        // runner cannot delete it from outside (`defaults delete` on the
+        // sandboxed container is denied the write and fails silently, while
+        // reads work - so it LOOKS like it worked). The app clears the pref
+        // itself through this test-mode seam; every test starts from the true
+        // "missing preference" state no matter what an earlier run left.
+        app.launchEnvironment["MELATI_TEST_RESET_PREFS"] = "1"
         app.launch()
     }
 
     override func tearDown() {
         app?.terminate()
         if let dbDir { try? FileManager.default.removeItem(atPath: dbDir) }
-        Self.deletePreviewsPref()
     }
 
     /// Missing preference means OFF: no entry body and no location readable
@@ -100,6 +102,8 @@ final class PreviewsUITests: XCTestCase {
         XCTAssertTrue(waitUntil { self.exposesSeedContent(self.calCell()) })
 
         app.terminate()
+        // No reset on the second launch - persistence is what's under test.
+        app.launchEnvironment.removeValue(forKey: "MELATI_TEST_RESET_PREFS")
         app.launch()
         app.typeKey("3", modifierFlags: .command)
         XCTAssertTrue(calCell().waitForExistence(timeout: 3))
@@ -133,18 +137,6 @@ final class PreviewsUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.2))
         }
         return condition()
-    }
-
-    /// The app is sandboxed, so its defaults live in its container; the
-    /// `defaults` CLI follows that redirection (raw CFPreferences from this
-    /// unsandboxed runner would write the wrong plist).
-    private static func deletePreviewsPref() {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-        p.arguments = ["delete", "com.lennertjansen.melati", "melati.showPreviews"]
-        p.standardError = FileHandle.nullDevice
-        try? p.run()
-        p.waitUntilExit()
     }
 
     private static func dateKey(daysAgo: Int) -> String {
