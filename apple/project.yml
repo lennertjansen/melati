@@ -85,6 +85,10 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
+        # One process per database: a second instance would race the first on
+        # the SQLCipher file AND its CloudKit sync state (same DB). Blocks the
+        # accidental Finder/Dock double-launch; `open -n` can still force it.
+        LSMultipleInstancesProhibited: true
         NSHumanReadableCopyright: ""
         ATSApplicationFontsPath: .
     entitlements:
