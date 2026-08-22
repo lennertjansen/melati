@@ -5,16 +5,9 @@ struct EntriesListView: View {
 
     let onSelectDate: (String) -> Void
 
-    @AppStorage("melati.listGrouping") private var groupingRaw: String = "flat"
     @AppStorage("melati.showPreviews") private var showPreviews: Bool = false
     @State private var summaries: [EntrySummary] = []
     @State private var loaded: Bool = false
-
-    private enum Grouping: String { case flat, grouped }
-
-    private var grouping: Grouping {
-        get { Grouping(rawValue: groupingRaw) ?? .flat }
-    }
 
     var body: some View {
         ZStack {
@@ -46,51 +39,28 @@ struct EntriesListView: View {
 
     private var toolbar: some View {
         HStack {
-            Picker("", selection: Binding(
-                get: { grouping },
-                set: { groupingRaw = $0.rawValue }
-            )) {
-                Text(String(localized: "list.flat")).tag(Grouping.flat)
-                Text(String(localized: "list.grouped")).tag(Grouping.grouped)
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 200)
             Spacer()
             SyncStatusLine(status: env.syncStatus)
         }
     }
 
-    @ViewBuilder
     private var listBody: some View {
-        switch grouping {
-        case .flat:
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(summaries) { summary in
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
+                ForEach(EntryUtil.monthGroups(summaries), id: \.month) { group in
+                    Text(monthLabel(group.month))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color("ForegroundSubtle"))
+                        .padding(.top, 16)
+                        .padding(.bottom, 6)
+                        .padding(.horizontal, 24)
+                    ForEach(group.entries) { summary in
                         row(summary)
                         Divider().opacity(0.3)
                     }
                 }
-                .padding(.horizontal, 24)
             }
-        case .grouped:
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
-                    ForEach(monthGroups, id: \.month) { group in
-                        Text(monthLabel(group.month))
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color("ForegroundSubtle"))
-                            .padding(.top, 16)
-                            .padding(.bottom, 6)
-                            .padding(.horizontal, 24)
-                        ForEach(group.entries) { summary in
-                            row(summary)
-                            Divider().opacity(0.3)
-                        }
-                    }
-                }
-                .padding(.bottom, 24)
-            }
+            .padding(.bottom, 24)
         }
     }
 
@@ -139,25 +109,6 @@ struct EntriesListView: View {
         [summary.location ?? "", summary.preview]
             .filter { !$0.isEmpty }
             .joined(separator: ", ")
-    }
-
-    private struct MonthGroup {
-        let month: String
-        let entries: [EntrySummary]
-    }
-
-    private var monthGroups: [MonthGroup] {
-        var ordered: [String] = []
-        var byMonth: [String: [EntrySummary]] = [:]
-        for s in summaries {
-            let mk = String(s.date.prefix(7))
-            if byMonth[mk] == nil {
-                ordered.append(mk)
-                byMonth[mk] = []
-            }
-            byMonth[mk]?.append(s)
-        }
-        return ordered.map { MonthGroup(month: $0, entries: byMonth[$0] ?? []) }
     }
 
     private func monthLabel(_ monthKey: String) -> String {

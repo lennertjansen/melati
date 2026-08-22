@@ -1,6 +1,28 @@
 import Foundation
 
 enum EntryUtil {
+    struct MonthGroup: Equatable {
+        let month: String
+        let entries: [EntrySummary]
+    }
+
+    /// Buckets summaries by their "yyyy-MM" prefix, preserving input order.
+    /// The store returns summaries date-DESC, so groups (and the entries
+    /// inside each) come out newest-first without re-sorting.
+    static func monthGroups(_ summaries: [EntrySummary]) -> [MonthGroup] {
+        var ordered: [String] = []
+        var byMonth: [String: [EntrySummary]] = [:]
+        for s in summaries {
+            let mk = String(s.date.prefix(7))
+            if byMonth[mk] == nil {
+                ordered.append(mk)
+                byMonth[mk] = []
+            }
+            byMonth[mk]?.append(s)
+        }
+        return ordered.map { MonthGroup(month: $0, entries: byMonth[$0] ?? []) }
+    }
+
     static func extractPreview(from content: String, maxLength: Int = 100) -> String {
         let lines = content.split(whereSeparator: \.isNewline).map(String.init)
         for line in lines {

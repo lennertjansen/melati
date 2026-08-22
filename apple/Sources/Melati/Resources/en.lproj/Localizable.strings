@@ -4,8 +4,6 @@
 "back" = "Back";
 "placeholder" = "Start writing…";
 "location" = "location";
-"list.flat" = "Flat";
-"list.grouped" = "Grouped";
 "list.empty" = "No entries yet";
 "cal.prev" = "Previous month";
 "cal.next" = "Next month";

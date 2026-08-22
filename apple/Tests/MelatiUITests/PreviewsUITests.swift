@@ -50,7 +50,7 @@ final class PreviewsUITests: XCTestCase {
     }
 
     /// Missing preference means OFF: no entry body and no location readable
-    /// on the calendar or the entries list (both groupings).
+    /// on the calendar or the entries list.
     func testDefaultHidesBodyAndLocationEverywhere() {
         app.typeKey("3", modifierFlags: .command)
         XCTAssertTrue(calCell().waitForExistence(timeout: 3))
@@ -58,13 +58,7 @@ final class PreviewsUITests: XCTestCase {
 
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(entriesRow().waitForExistence(timeout: 3))
-        XCTAssertFalse(exposesSeedContent(entriesRow()), "entries (flat) leaked with previews off")
-
-        // Grouped list renders through a different code path.
-        app.radioButtons.element(boundBy: 1).click()
-        XCTAssertTrue(entriesRow().waitForExistence(timeout: 3))
-        XCTAssertFalse(exposesSeedContent(entriesRow()), "entries (grouped) leaked with previews off")
-        app.radioButtons.element(boundBy: 0).click()
+        XCTAssertFalse(exposesSeedContent(entriesRow()), "entries leaked with previews off")
     }
 
     /// The eye button turns previews on for BOTH surfaces (body AND location);
