@@ -82,23 +82,16 @@ struct AppShell: View {
         }
     }
 
-    /// Dates reachable by prev/next: every entry plus today (which is always
-    /// openable and editable even before it has a row). Sorted newest-first,
-    /// matching entryDates. Keeps flipping positional so gaps between entries
-    /// are skipped and a rowless today still navigates.
-    private var navDates: [String] {
-        let today = DateUtil.todayKey()
-        guard !entryDates.contains(today) else { return entryDates }
-        return ([today] + entryDates).sorted(by: >)
+    private var nav: EntryNavigation {
+        EntryNavigation(entryDates: entryDates, todayKey: DateUtil.todayKey())
     }
 
     @ViewBuilder
     private var detailContent: some View {
         if let date = selectedDate {
-            let idx = navDates.firstIndex(of: date)
             let onDismiss = { selectedDate = nil }
-            let onPrev = olderDate(from: idx).map { older in { selectedDate = older } }
-            let onNext = newerDate(from: idx).map { newer in { selectedDate = newer } }
+            let onPrev = nav.older(than: date).map { older in { selectedDate = older } }
+            let onNext = nav.newer(than: date).map { newer in { selectedDate = newer } }
             // Today is always the editable surface, however it was reached.
             if date == DateUtil.todayKey() {
                 TodayView(onDismiss: onDismiss, onPrev: onPrev, onNext: onNext)
@@ -128,18 +121,6 @@ struct AppShell: View {
         selectedDate = nil
         selection = tab
         scheduleHide()
-    }
-
-    private func olderDate(from idx: Array<String>.Index?) -> String? {
-        guard let idx else { return nil }
-        let next = idx + 1
-        return navDates.indices.contains(next) ? navDates[next] : nil
-    }
-
-    private func newerDate(from idx: Array<String>.Index?) -> String? {
-        guard let idx else { return nil }
-        let prev = idx - 1
-        return navDates.indices.contains(prev) ? navDates[prev] : nil
     }
 
     private func showSidebar() {

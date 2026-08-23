@@ -23,9 +23,9 @@ pnpm i && pnpm check
 Shortcuts:
 - ⌘N new entry
 - ⌘1/⌘2/⌘3 today/entries/calendar
-- ←/→ flip entries
-- ⌘[ back
-- ⌘? help
+- ⇧⌘P toggle previews
+- ⌘E edit location
+- Esc / ⌘[ back
 
 ## Privacy
 
