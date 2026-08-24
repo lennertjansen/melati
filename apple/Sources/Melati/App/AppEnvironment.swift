@@ -32,6 +32,14 @@ final class AppEnvironment {
             if let dir = ProcessInfo.processInfo.environment["MELATI_TEST_DB_DIR"] {
                 print("!!! MELATI TEST MODE !!! isolated DB in \(dir) - sync disabled")
                 isTestMode = true
+                // Pref-reset seam: UI tests cannot clear the sandboxed
+                // container's defaults from outside (the runner's `defaults
+                // delete` is denied container writes and fails silently), so
+                // the app clears its own domain. Omit the var on a relaunch
+                // to exercise persistence.
+                if ProcessInfo.processInfo.environment["MELATI_TEST_RESET_PREFS"] != nil {
+                    UserDefaults.standard.removeObject(forKey: "melati.showPreviews")
+                }
                 try FileManager.default.createDirectory(
                     at: URL(fileURLWithPath: dir), withIntermediateDirectories: true)
                 let url = URL(fileURLWithPath: dir).appendingPathComponent("journal.db")
